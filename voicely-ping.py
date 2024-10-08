@@ -7,9 +7,9 @@ with open('../token', 'r') as file:
     bot_token = file.read().strip()
 
 # Load notify data from file (or return an empty dictionary if the file doesn't exist)
-def load_notify_data():
+def load_pings():
     try:
-        with open('notify_users.json', 'r') as f:
+        with open('pings.json', 'r') as f:
             # Load JSON data into a dictionary
             return json.load(f)
     except FileNotFoundError:
@@ -17,10 +17,10 @@ def load_notify_data():
         return {}
 
 # Save the current notify data to a JSON file
-def save_notify_data():
-    with open('notify_users.json', 'w') as f:
+def save_pings():
+    with open('pings.json', 'w') as f:
         # Write the dictionary to the JSON file
-        json.dump(notify_users, f)
+        json.dump(pings, f)
 
 # Define intents
 intents = discord.Intents.default()
@@ -35,7 +35,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Store users who want to be notified in a dictionary {guild_id: set(user_ids)}
 # Load the data from the JSON file when the bot starts
-notify_users = load_notify_data()
+pings = load_pings()
 
 @bot.event
 async def on_ready():
@@ -51,11 +51,11 @@ async def notifyme(ctx):
     guild_id = str(ctx.guild.id)
     user_id = str(ctx.author.id)
     # Add the user to the notification set for the guild
-    if guild_id not in notify_users:
-        notify_users[guild_id] = set()
-    notify_users[guild_id].add(user_id)
+    if guild_id not in pings:
+        pings[guild_id] = set()
+    pings[guild_id].add(user_id)
     # Save the updated notification list to the JSON file
-    save_notify_data()
+    save_pings()
     await ctx.send(f'{ctx.author.mention}, you will be notified when someone joins a voice channel.')
 
 @bot.command()
@@ -67,10 +67,10 @@ async def unnotifyme(ctx):
     guild_id = str(ctx.guild.id)
     user_id = str(ctx.author.id)
     # Remove the user from the notification set for the guild, if they exist
-    if guild_id in notify_users and user_id in notify_users[guild_id]:
-        notify_users[guild_id].remove(user_id)
+    if guild_id in pings and user_id in pings[guild_id]:
+        pings[guild_id].remove(user_id)
         # Save the updated notification list to the JSON file
-        save_notify_data()
+        save_pings()
         await ctx.send(f'You will no longer receive voice channel notifications.', reference=ctx.message, ephemeral=True)
     else:
         await ctx.send(f'You were not signed up for notifications.', reference=ctx.message, ephemeral=True)
@@ -85,10 +85,10 @@ async def on_voice_state_update(member, before, after):
     if before.channel is None and after.channel is not None:
         guild_id = str(member.guild.id)
         # Get users to notify for this guild
-        if guild_id in notify_users:
+        if guild_id in pings:
             channel_link = f"https://discord.com/channels/{guild_id}/{after.channel.id}"
             # Notify all users who opted in
-            for user_id in notify_users[guild_id]:
+            for user_id in pings[guild_id]:
                 user = bot.get_user(int(user_id))
                 if user:
                     try:
