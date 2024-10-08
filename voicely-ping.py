@@ -77,7 +77,7 @@ async def removeping(ctx: commands.Context):
         await ctx.send(f'You were not signed up for notifications.', reference=ctx.message, ephemeral=True)
 
 @bot.event
-async def on_voice_state_update(member, before, after):
+async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
     """
     Event triggered when a user's voice state changes.
     Checks if a user has joined a voice channel and sends a DM to users who opted in for notifications.
