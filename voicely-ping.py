@@ -71,9 +71,9 @@ async def unnotifyme(ctx):
         notify_users[guild_id].remove(user_id)
         # Save the updated notification list to the JSON file
         save_notify_data()
-        await ctx.send(f'{ctx.author.mention}, you will no longer receive voice channel notifications.')
+        await ctx.send(f'You will no longer receive voice channel notifications.', reference=ctx.message, ephemeral=True)
     else:
-        await ctx.send(f'{ctx.author.mention}, you were not signed up for notifications.')
+        await ctx.send(f'You were not signed up for notifications.', reference=ctx.message, ephemeral=True)
 
 @bot.event
 async def on_voice_state_update(member, before, after):
