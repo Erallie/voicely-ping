@@ -22,8 +22,16 @@ def save_notify_data():
         # Write the dictionary to the JSON file
         json.dump(notify_users, f)
 
+# Define intents
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.voice_states = True
+intents.messages = True
+intents.members = True
+
 # Create the bot instance with a command prefix
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Store users who want to be notified in a dictionary {guild_id: set(user_ids)}
 # Load the data from the JSON file when the bot starts
