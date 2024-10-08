@@ -1,5 +1,6 @@
 import json
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 # Load bot token from file
@@ -170,6 +171,39 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     except discord.Forbidden:
                         # Handle cases where the bot can't DM the user (e.g., DMs are disabled)
                         print(f'Could not send DM to {user.name}')
+
+
+@bot.command()
+@commands.is_owner()
+@app_commands.describe(guild="The server ID of the server you want to sync commands to.")
+async def sync(ctx: commands.Context, guild: discord.Guild = None):
+    """Sync slash commands either globally or for a specific guild."""
+
+    # print("sync triggered")
+
+    if guild:
+        synced_commands = await bot.tree.sync(guild=guild)
+        command_list = ""
+        for command in synced_commands:
+            command_list += f"\n- `/{command.name}`"
+        await ctx.send(f"Commands synced to the guild: {guild.name}{command_list}\nPlease note it may take up to an hour to propagate globally.", reference=ctx.message, ephemeral=True)
+    else:
+        try:
+            synced_commands = await bot.tree.sync()
+        except discord.app_commands.CommandSyncFailure as error:
+            print(f"CommandSyncFailure: {error}")
+        except discord.HTTPException as error:
+            print(f"HTTPException: {error}")
+        except discord.Forbidden as error:
+            print(f"Forbidden: {error}")
+        except discord.app_commands.TranslationError as error:
+            print(f"TranslationError: {error}")
+        # print("synced commands globally")
+        command_list = ""
+        for command in synced_commands:
+            command_list += f"\n- `/{command.name}`"
+        await ctx.send(f"Commands synced globally:{command_list}\nPlease note it may take up to an hour to propagate globally.", reference=ctx.message, ephemeral=True)
+
 
 # Run the bot with the loaded token
 bot.run(bot_token)
