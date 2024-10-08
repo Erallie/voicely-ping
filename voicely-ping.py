@@ -125,19 +125,9 @@ class AddPingModal(discord.ui.Modal, title="Setup a ping"):
 
 @bot.hybrid_command()
 async def addping(ctx: commands.Context):
-    """
-    Command for users to enable notifications.
-    Adds the user ID to the set of users to be notified for the current guild.
-    """
-    guild_id = str(ctx.guild.id)
-    user_id = str(ctx.author.id)
-    # Add the user to the notification set for the guild
-    if guild_id not in pings:
-        pings[guild_id] = set()
-    pings[guild_id].add(user_id)
-    # Save the updated notification list to the JSON file
-    save_pings()
-    await ctx.send(f'{ctx.author.mention}, you will be notified when someone joins a voice channel.')
+    """Add a voice channel for you to be notified for."""
+    modal = AddPingModal()
+    await ctx.send(modal=modal, reference=ctx.message, ephemeral=True)
 
 @bot.hybrid_command()
 async def removeping(ctx: commands.Context):
