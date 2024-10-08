@@ -128,7 +128,7 @@ class AddPingModal(discord.ui.Modal, title="Setup a ping"):
 async def addping(ctx: commands.Context):
     """Add a voice channel for you to be notified for."""
     modal = AddPingModal()
-    await ctx.send(modal=modal, reference=ctx.message, ephemeral=True)
+    await ctx.interaction.response.send_modal(modal=modal, reference=ctx.message, ephemeral=True)
 
 @bot.hybrid_command()
 async def removeping(ctx: commands.Context):
