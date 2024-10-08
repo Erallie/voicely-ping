@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 
 # Load bot token from file
-with open('../discord_bot_token.txt', 'r') as file:
+with open('../token', 'r') as file:
     bot_token = file.read().strip()
 
 # Load notify data from file (or return an empty dictionary if the file doesn't exist)
