@@ -110,31 +110,31 @@ class AddPingModal(discord.ui.Modal):
             if user_id not in pings[guild_id][channel_id][notify_str]:
                 pings[guild_id][channel_id][notify_str].append(user_id)
 
-                # region example
-                # This dictionary will look something like this:
-                # {
-                #     guild_id_1: {
-                #         channel_id_1: {
-                #             count_1: [user_id_1, user_id_2],
-                #             count_2: [user_id_1, user_id_2]
-                #         },
-                #         channel_id_2: {
-                #             count_1: [user_id_1, user_id_2],
-                #             count_2: [user_id_1, user_id_2]
-                #         }
-                #     },
-                #     guild_id_2: {
-                #         channel_id_1: {
-                #             count_1: [user_id_1, user_id_2],
-                #             count_2: [user_id_1, user_id_2]
-                #         },
-                #         channel_id_2: {
-                #             count_1: [user_id_1, user_id_2],
-                #             count_2: [user_id_1, user_id_2]
-                #         }
-                #     }
-                # }
-                # endregion
+            # region example
+            # This dictionary will look something like this:
+            # {
+            #     guild_id_1: {
+            #         channel_id_1: {
+            #             count_1: [user_id_1, user_id_2],
+            #             count_2: [user_id_1, user_id_2]
+            #         },
+            #         channel_id_2: {
+            #             count_1: [user_id_1, user_id_2],
+            #             count_2: [user_id_1, user_id_2]
+            #         }
+            #     },
+            #     guild_id_2: {
+            #         channel_id_1: {
+            #             count_1: [user_id_1, user_id_2],
+            #             count_2: [user_id_1, user_id_2]
+            #         },
+            #         channel_id_2: {
+            #             count_1: [user_id_1, user_id_2],
+            #             count_2: [user_id_1, user_id_2]
+            #         }
+            #     }
+            # }
+            # endregion
 
             links.append(f"https://discord.com/channels/{interaction.guild_id}/{channel.id}")
             
