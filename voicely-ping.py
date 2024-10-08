@@ -44,7 +44,7 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 @bot.command()
-async def notifyme(ctx):
+async def addping(ctx: commands.Context):
     """
     Command for users to enable notifications.
     Adds the user ID to the set of users to be notified for the current guild.
@@ -60,7 +60,7 @@ async def notifyme(ctx):
     await ctx.send(f'{ctx.author.mention}, you will be notified when someone joins a voice channel.')
 
 @bot.command()
-async def unnotifyme(ctx):
+async def removeping(ctx: commands.Context):
     """
     Command for users to disable notifications.
     Removes the user ID from the set of users to be notified for the current guild.
