@@ -43,7 +43,7 @@ async def on_ready():
     """Triggered when the bot has successfully connected to Discord."""
     print(f'Logged in as {bot.user}')
 
-@bot.command()
+@bot.hybrid_command()
 async def addping(ctx: commands.Context):
     """
     Command for users to enable notifications.
@@ -59,7 +59,7 @@ async def addping(ctx: commands.Context):
     save_pings()
     await ctx.send(f'{ctx.author.mention}, you will be notified when someone joins a voice channel.')
 
-@bot.command()
+@bot.hybrid_command()
 async def removeping(ctx: commands.Context):
     """
     Command for users to disable notifications.
