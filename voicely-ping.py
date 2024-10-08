@@ -12,7 +12,8 @@ def load_pings():
         with open('pings.json', 'r') as f:
             # Load JSON data into a dictionary
             return json.load(f)
-    except FileNotFoundError:
+    except FileNotFoundError as error:
+        print(f"Cannot load pings.json: {error}")
         # If the file doesn't exist, return an empty dictionary
         return {}
 
