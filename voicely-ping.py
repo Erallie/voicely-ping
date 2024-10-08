@@ -40,6 +40,11 @@ class Bot(commands.Bot):
             "notify_count": 3,
             "reset_count": 0
         }
+        self.notified_channels = {}
+        # This dictionary will look like this: {
+        #     "user_id": [channel_id_1, channel_id_2]
+        # }
+        # make sure to not notify people if they are already in the channel
 
     async def setup_hook(self):
         print(f"Setup complete for {self.user}")
@@ -57,7 +62,7 @@ async def on_ready():
     """Triggered when the bot has successfully connected to Discord."""
     print(f'Logged in as {bot.user}')
 
-class AddPingModal(discord.ui.Modal, title="Setup a ping"):
+class AddPingView(discord.ui.View):
     notify_count = discord.ui.TextInput(
         label="Notify count",
         placeholder=str(bot.default_settings["notify_count"]),
@@ -105,6 +110,30 @@ class AddPingModal(discord.ui.Modal, title="Setup a ping"):
             if user_id not in pings[guild_id][channel_id][notify_str]:
                 pings[guild_id][channel_id][notify_str].append(user_id)
 
+                # This dictionary will look something like this:
+                # {
+                #     guild_id_1: {
+                #         channel_id_1: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         },
+                #         channel_id_2: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         }
+                #     },
+                #     guild_id_2: {
+                #         channel_id_1: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         },
+                #         channel_id_2: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         }
+                #     }
+                # }
+
             links.append(f"https://discord.com/channels/{interaction.guild_id}/{channel.id}")
             
         # Save the updated notification list to the JSON file
@@ -124,14 +153,19 @@ class AddPingModal(discord.ui.Modal, title="Setup a ping"):
         await interaction.response.send_message(embeds=[confirmation_embed, channel_list], ephemeral=True)
 
 
-@bot.hybrid_command()
-async def addping(ctx: commands.Context):
-    """Add a voice channel for you to be notified for."""
-    modal = AddPingModal()
-    await ctx.interaction.response.send_modal(modal=modal, reference=ctx.message, ephemeral=True)
+@bot.hybrid_group()
+async def ping(ctx: commands.Context):
+    """Add or remove a ping."""
+    if ctx.invoked_subcommand is None:
+        await ctx.send(f"{ctx.invoked_subcommand} is not a valid subcommand.", reference=ctx.message, ephemeral=True)
 
-@bot.hybrid_command()
-async def removeping(ctx: commands.Context):
+@ping.command()
+async def add(ctx: commands.Context):
+    """Add a voice channel for you to be notified for."""
+    await ctx.send(view=AddPingView(), reference=ctx.message, ephemeral=True)
+
+@ping.command()
+async def remove(ctx: commands.Context):
     """
     Command for users to disable notifications.
     Removes the user ID from the set of users to be notified for the current guild.
@@ -153,24 +187,41 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     Event triggered when a user's voice state changes.
     Checks if a user has joined a voice channel and sends a DM to users who opted in for notifications.
     """
-    # Check if the user joined a voice channel (wasn't in one before, but now is)
-    if before.channel is None and after.channel is not None:
-        guild_id = str(member.guild.id)
-        # Get users to notify for this guild
-        if guild_id in pings:
-            channel_link = f"https://discord.com/channels/{guild_id}/{after.channel.id}"
-            # Notify all users who opted in
-            for user_id in pings[guild_id]:
-                user = bot.get_user(int(user_id))
-                if user:
-                    try:
-                        # Send a DM with the link to join the voice channel
-                        await user.send(
-                            f'{member.name} has joined {after.channel.name}. Click here to join: {channel_link}'
-                        )
-                    except discord.Forbidden:
-                        # Handle cases where the bot can't DM the user (e.g., DMs are disabled)
-                        print(f'Could not send DM to {user.name}')
+    # region Reset pings
+    if len(before.channel.members) == 0:
+        for user in bot.notified_channels:
+            if before.channel.id in bot.notified_channels[user]:
+                bot.notified_channels[user].remove(before.channel.id)
+    # endregion
+    # region Ping
+    member_list = after.channel.members
+    count = len(member_list)
+    count_str = str(count)
+    guild_id = str(member.guild.id)
+    channel_id = str(after.channel.id)
+    if guild_id in pings and channel_id in pings[guild_id] and count_str in pings[guild_id][channel_id]:
+        for pinged_user_id in pings[guild_id][channel_id][count_str]:
+            pinged_user = bot.get_user(pinged_user_id)
+            if count <= 5:
+                members_message = ""
+                for x in range(count):
+                    if x > count - 1:
+                        members_message += f"<@{member_list[x]}>, "
+                    else:
+                        members_message += f"and <@{member_list[x]}>"
+            else:
+                members_message = f"**{count_str}** members"
+
+            if count == 1:
+                verb = "is"
+            else:
+                verb = "are"
+            
+            try:
+                await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id}/{channel_id}.")
+            except discord.Forbidden as error:
+                print(f"Could not send ping to {pinged_user.name}: {error}")
+    # endregion
 
 
 @bot.command()
