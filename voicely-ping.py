@@ -62,9 +62,9 @@ async def on_ready():
     """Triggered when the bot has successfully connected to Discord."""
     print(f'Logged in as {bot.user}')
 
-class AddPingView(discord.ui.View):
+class AddPingModal(discord.ui.Modal):
     notify_count = discord.ui.TextInput(
-        label="Notify count",
+        label="Member count",
         placeholder=str(bot.default_settings["notify_count"]),
         required=False,
         max_length=3
@@ -76,7 +76,7 @@ class AddPingView(discord.ui.View):
         max_values=25
     )
 
-    async def on_submit(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction):
         if not self.notify_count.value:
             notify_count = bot.default_settings["notify_count"]
         else:
@@ -152,6 +152,11 @@ class AddPingView(discord.ui.View):
         # Respond to the user with the text they entered.
         await interaction.response.send_message(embeds=[confirmation_embed, channel_list], ephemeral=True)
 
+class OpenModalView(discord.ui.View):
+    @discord.ui.button(label="Continue")
+    async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = AddPingModal(title="Setup new ping(s)")
+        await interaction.response.send_modal(modal)
 
 @bot.hybrid_group()
 async def ping(ctx: commands.Context):
@@ -162,7 +167,9 @@ async def ping(ctx: commands.Context):
 @ping.command()
 async def add(ctx: commands.Context):
     """Add a voice channel for you to be notified for."""
-    await ctx.send(view=AddPingView(), reference=ctx.message, ephemeral=True)
+
+    embed = discord.Embed(title="Setup new ping(s)", description='Choose from the dropdown to specify **one or more channels** to be notified for.\n\nThen under `Member count`, type a number that represents the **number of people** that need to be in the channel(s) for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel(s).')
+    await ctx.send(embed=embed, view=OpenModalView(), reference=ctx.message, ephemeral=True)
 
 @ping.command()
 async def remove(ctx: commands.Context):
