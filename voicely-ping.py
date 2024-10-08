@@ -31,8 +31,21 @@ intents.voice_states = True
 intents.messages = True
 intents.members = True
 
+# Set up the bot
+class Bot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents)
+        self.default_settings = {
+            "notify_count": 3,
+            "reset_count": 0
+        }
+
+    async def setup_hook(self):
+        print(f"Setup complete for {self.user}")
+
+
 # Create the bot instance with a command prefix
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = Bot()
 
 # Store users who want to be notified in a dictionary {guild_id: set(user_ids)}
 # Load the data from the JSON file when the bot starts
