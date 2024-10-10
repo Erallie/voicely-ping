@@ -249,9 +249,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     """
     # region Reset pings
     if before.channel is not None and len(before.channel.members) == 0:
-        for user in bot.notified_channels:
-            if before.channel.id in bot.notified_channels[user]:
-                bot.notified_channels[user].remove(before.channel.id)
+        for user_id in bot.notified_channels:
+            if before.channel.id in bot.notified_channels[user_id]:
+                bot.notified_channels[user_id].remove(before.channel.id)
     # endregion
     # region Ping
     if after.channel is not None:
@@ -262,6 +262,14 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         channel_id = str(after.channel.id)
         if guild_id in pings and channel_id in pings[guild_id] and count_str in pings[guild_id][channel_id]:
             for pinged_user_id in pings[guild_id][channel_id][count_str]:
+                if pinged_user_id in bot.notified_channels:
+                    if after.channel.id in bot.notified_channels[pinged_user_id]:
+                        return
+                else:
+                    bot.notified_channels[pinged_user_id] = []
+                    
+                bot.notified_channels[pinged_user_id].append(after.channel.id)
+
                 pinged_user = await bot.fetch_user(pinged_user_id)
 
                 if count <= 5:
