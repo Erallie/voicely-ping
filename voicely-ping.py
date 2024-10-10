@@ -218,23 +218,7 @@ class OpenModalView(discord.ui.View):
 # endregion
 
 # region remove ping
-async def option_to_data(value: str):
-    values = value.split('/')
-    
-    guild = await bot.fetch_guild(values[0])
-    channel = await bot.fetch_channel(values[1])
 
-    try:
-        count = int(values[2])
-    except:
-        print(f'Error converting {values[2]} to int.')
-        count = 0
-
-    return {
-        "guild": guild,
-        "channel": channel,
-        "count": count
-    }
 
 class RemovePingSelect(discord.ui.Select):
     # def get_options(all_options: List[discord.SelectOption], index: int):
@@ -256,6 +240,30 @@ class RemovePingSelect(discord.ui.Select):
             await interaction.response.send_message(f"You must select at least one ping!", ephemeral=True)
             return
         
+        for value in self.values:
+            values = value.split('/')
+            guild_id = values[0]
+            channel_id = values[1]
+            count_id = values[2]
+
+            pings[guild_id][channel_id][count_id].remove(str(interaction.user.id))
+
+            if len(pings[guild_id][channel_id][count_id]) == 0:
+                del pings[guild_id][channel_id][count_id]
+            if len(pings[guild_id][channel_id]) == 0:
+                del pings[guild_id][channel_id]
+            if len(pings[guild_id]) == 0:
+                del pings[guild_id]
+
+        save_pings()
+
+        count = len(self.values)
+        if count > 1:
+            plural = "s"
+        else:
+            plural = ""
+        await interaction.response.send_message(f"Successfully removed {len(self.values)} ping{plural}.")
+        
         
 
 
@@ -263,11 +271,12 @@ class RemovePingView(discord.ui.View):
     pages = 0
     # page = 0
     select_count = 0
-    options: List[dict] = []
+    all_options: List[dict] = []
+    count = 0
     # index = 0
     def __init__(self, options: List[dict], page: int):
         super().__init__()
-        self.options = options
+        self.all_options = options
         self.select_count = math.ceil(len(options) / 25)
         self.page = page
         if self.select_count == 5:
@@ -279,8 +288,6 @@ class RemovePingView(discord.ui.View):
         
 
     async def setup(self):
-        def truncate_options(all_options: List[dict], index: int):
-            return all_options[(index * 25): min((index * 25) + 25, len(self.options))]
 
         async def setup_select(options_dict: List[dict]):
             options: List[discord.SelectOption] = []
@@ -300,7 +307,7 @@ class RemovePingView(discord.ui.View):
                     plural = "s"
                 else:
                     plural = ""
-                options.append(discord.SelectOption(label=f"{count_str} member{plural} in {channel.name}", value=f"{dict["guild"]}/{channel_str}/{count_str}", description=channel.guild.name))
+                options.append(discord.SelectOption(label=f"{channel.name}: {count_str} member{plural}", value=f"{dict["guild"]}/{channel_str}/{count_str}", description=channel.guild.name))
             return options
         
         
@@ -316,21 +323,21 @@ class RemovePingView(discord.ui.View):
             else:
                 return f"Servers {start_guild} to {end_guild}"
         
-        count = 0
-        # print(len(self.options))
-        while (self.index < len(self.options) - 1) and (count < 4):
-            options = truncate_options(self.options, self.index)
+
+        async def add_option():
+            print(str(self.index) + ":" + str(min(self.index + 25, len(self.all_options))))
+            options = self.all_options[self.index:min(self.index + 25, len(self.all_options))]
+            print(len(options))
             select = RemovePingSelect(await setup_select(options), await set_placeholder(options), self.index)
-            # await select.setup()
             self.add_item(select)
             self.index += 25
-            count += 1
+            self.count += 1
+
+        while (self.index < len(self.all_options)) and (self.count < 5):
+            await add_option()
         
-        if self.pages == 1 and self.index < len(self.options):
-            options = truncate_options(self.options, self.index)
-            select = RemovePingSelect(await setup_select(options), await set_placeholder(options), self.index)
-            # await select.setup()
-            self.add_item(select)
+        if self.pages == 1 and self.index < len(self.all_options):
+            await add_option()
 
 
 
