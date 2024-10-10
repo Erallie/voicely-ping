@@ -307,7 +307,7 @@ class RemovePingView(discord.ui.View):
                     plural = "s"
                 else:
                     plural = ""
-                options.append(discord.SelectOption(label=f"{channel.name}: {count_str} member{plural}", value=f"{dict["guild"]}/{channel_str}/{count_str}", description=channel.guild.name))
+                options.append(discord.SelectOption(label=f"{channel.name}: {count_str} member{plural}", value=f"{dict['guild']}/{channel_str}/{count_str}", description=channel.guild.name))
             return options
         
         
