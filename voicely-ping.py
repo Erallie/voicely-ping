@@ -378,21 +378,6 @@ async def remove(ctx: commands.Context):
         for channel_id_str in pings[guild_id_str]:
             for count_str in pings[guild_id_str][channel_id_str]:
                 if user_id_str in pings[guild_id_str][channel_id_str][count_str]:
-                    # channel = await bot.fetch_channel(int(channel_id_str))
-                    
-                    # try:
-                    #     count = int(count_str)
-                    # except:
-                    #     print(f"Error converting {count_str} to an int.")
-                    #     count = None
-                    
-                    # if count is None:
-                    #     plural = "(s)"
-                    # elif count > 1:
-                    #     plural = "s"
-                    # else:
-                    #     plural = ""
-                    
                     options.append({
                         "guild": guild_id_str,
                         "channel": channel_id_str,
