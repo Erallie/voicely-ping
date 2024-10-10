@@ -282,7 +282,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     verb = "are"
                 
                 try:
-                    await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id}/{channel_id}.")
+                    await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id}/{channel_id}")
                 except discord.Forbidden as error:
                     print(f"Could not send ping to {pinged_user.name}: {error}")
     # endregion
