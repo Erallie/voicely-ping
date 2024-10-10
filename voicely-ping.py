@@ -267,12 +267,12 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                 if count <= 5:
                     members_message = ""
                     for x in range(count):
-                        if x < count - 1:
-                            members_message += f"<@{member_list[x].id}>, "
-                        elif x != 0:
-                            members_message += f"and <@{member_list[x].id}>"
-                        else:
+                        if x == 0 and (count == 2 or count == 1):
                             members_message += f"<@{member_list[x].id}>"
+                        elif x < count - 1:
+                            members_message += f"<@{member_list[x].id}>, "
+                        else:
+                            members_message += f"and <@{member_list[x].id}>"
                 else:
                     members_message = f"**{count_str}** members"
 
