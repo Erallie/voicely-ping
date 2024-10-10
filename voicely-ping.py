@@ -251,39 +251,43 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     Checks if a user has joined a voice channel and sends a DM to users who opted in for notifications.
     """
     # region Reset pings
-    if len(before.channel.members) == 0:
+    if before.channel is not None and len(before.channel.members) == 0:
         for user in bot.notified_channels:
             if before.channel.id in bot.notified_channels[user]:
                 bot.notified_channels[user].remove(before.channel.id)
     # endregion
     # region Ping
-    member_list = after.channel.members
-    count = len(member_list)
-    count_str = str(count)
-    guild_id = str(member.guild.id)
-    channel_id = str(after.channel.id)
-    if guild_id in pings and channel_id in pings[guild_id] and count_str in pings[guild_id][channel_id]:
-        for pinged_user_id in pings[guild_id][channel_id][count_str]:
-            pinged_user = bot.get_user(pinged_user_id)
-            if count <= 5:
-                members_message = ""
-                for x in range(count):
-                    if x > count - 1:
-                        members_message += f"<@{member_list[x]}>, "
-                    else:
-                        members_message += f"and <@{member_list[x]}>"
-            else:
-                members_message = f"**{count_str}** members"
+    if after.channel is not None:
+        member_list = after.channel.members
+        count = len(member_list)
+        count_str = str(count)
+        guild_id = str(after.channel.guild.id)
+        channel_id = str(after.channel.id)
+        if guild_id in pings and channel_id in pings[guild_id] and count_str in pings[guild_id][channel_id]:
+            for pinged_user_id in pings[guild_id][channel_id][count_str]:
+                pinged_user = await bot.fetch_user(pinged_user_id)
 
-            if count == 1:
-                verb = "is"
-            else:
-                verb = "are"
-            
-            try:
-                await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id}/{channel_id}.")
-            except discord.Forbidden as error:
-                print(f"Could not send ping to {pinged_user.name}: {error}")
+                if count <= 5:
+                    members_message = ""
+                    for x in range(count):
+                        if x < count - 1:
+                            members_message += f"<@{member_list[x].id}>, "
+                        elif x != 0:
+                            members_message += f"and <@{member_list[x].id}>"
+                        else:
+                            members_message += f"<@{member_list[x].id}>"
+                else:
+                    members_message = f"**{count_str}** members"
+
+                if count == 1:
+                    verb = "is"
+                else:
+                    verb = "are"
+                
+                try:
+                    await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id}/{channel_id}.")
+                except discord.Forbidden as error:
+                    print(f"Could not send ping to {pinged_user.name}: {error}")
     # endregion
 
 
