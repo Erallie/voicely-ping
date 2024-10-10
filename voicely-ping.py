@@ -404,14 +404,14 @@ async def remove(ctx: commands.Context):
         await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=True)
     else:
         # async def sort_options(option):
-        #     values = option_to_data(option.value)
+        #     # values = option_to_data(option.value)
             
-        #     guild_name: str = values["guild"].name
-        #     channel_name: str = values["channel"].name
+        #     guild_name: str = (await bot.fetch_guild(option["guild"])).name
+        #     channel_name: str = (await bot.fetch_guild(option["channel"])).name
 
-        #     return guild_name + channel_name + str(values["count"])
+        #     return f"{guild_name} {channel_name} {option["count"]}"
 
-        # options.sort(key=sort_options)
+        # options.sort(key=await sort_options)
         embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
         view = RemovePingView(options, 0)
         await view.setup()
