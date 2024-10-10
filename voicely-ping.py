@@ -325,9 +325,9 @@ class RemovePingView(discord.ui.View):
         
 
         async def add_option():
-            print(str(self.index) + ":" + str(min(self.index + 25, len(self.all_options))))
+            # print(str(self.index) + ":" + str(min(self.index + 25, len(self.all_options))))
             options = self.all_options[self.index:min(self.index + 25, len(self.all_options))]
-            print(len(options))
+            # print(len(options))
             select = RemovePingSelect(await setup_select(options), await set_placeholder(options), self.index)
             self.add_item(select)
             self.index += 25
