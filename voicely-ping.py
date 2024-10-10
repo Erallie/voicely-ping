@@ -63,33 +63,19 @@ async def on_ready():
     """Triggered when the bot has successfully connected to Discord."""
     print(f'Logged in as {bot.user}')
 
-class AddPingChannelView(discord.ui.View):
-    # notify_count = discord.ui.TextInput(
-    #     label="Member count",
-    #     placeholder=str(bot.default_settings["notify_count"]),
-    #     required=False,
-    #     max_length=3
-    # )
+class VoiceChannelSelect(discord.ui.ChannelSelect):
+    def __init__(self):
+        super().__init__(placeholder="Select one or more channels", min_values=1, max_values=25)
+        self.channel_types = [discord.ChannelType.voice]
 
-    @discord.ui.select(channel_types=[discord.ChannelType.voice], placeholder="Select one or more channels", max_values=25)
-    async def add_channels(self, interaction: discord.Interaction, select: discord.ui.ChannelSelect):
-        # if not self.notify_count.value:
-        #     notify_count = bot.default_settings["notify_count"]
-        # else:
-        #     try:
-        #         notify_count = int(self.notify_count.value)
-        #     except:
-        #         await interaction.response.send_message(f"{self.notify_count.value} is not a valid number! Only positive whole numbers are allowed.", ephemeral=True)
-        #         return
-            
-        # notify_str = str(notify_count)
-        if len(select.values) <= 0:
+    async def callback(self, interaction: discord.Interaction):
+        if len(self.values) <= 0:
             await interaction.response.send_message(f"You must select at least one channel!", ephemeral=True)
             return
         
         
         links = []
-        for channel in select.values:
+        for channel in self.values:
             links.append(f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}")
 
         all_links = "\n".join(links)
@@ -105,33 +91,50 @@ class AddPingChannelView(discord.ui.View):
 
         channel_list = discord.Embed(description=all_links)
         
-        count_embed = discord.Embed(title="Set notify count", description=f"Type a number below that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
-        # Respond to the user with the text they entered.
-        await interaction.response.send_message(embeds=[confirmation_embed, channel_list, count_embed], view=AddPingCountModal(select.values, all_links), ephemeral=True)
+        count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
+        # await interaction.response.send_modal(AddPingCountModal(self.values, all_links))
+        
+        await interaction.response.send_message(embeds=[confirmation_embed, channel_list, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
 
-class AddPingCountModal(discord.ui.View, title="Add new ping(s)"):
+class AddPingChannelView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(VoiceChannelSelect())
+
+class AddPingCountModal(discord.ui.Modal, title="Setup new ping(s)"):
+    plural = ""
+    channel_ref = ""
     
     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: str):
         super().__init__()
         self.channels = channels
         self.links = links
+        if len(channels) > 1:
+            self.plural = "s"
+            self.channel_ref = "any of the following channels"
+        else:
+            self.plural = ""
+            self.channel_ref = "the following channel"
+        # self.add_item(VoiceChannelSelect())
+    
 
     notify_count = discord.ui.TextInput(
         label="Member count",
         placeholder=str(bot.default_settings["notify_count"]),
-        required=False,
-        max_length=3
+        max_length=3,
+        style=discord.TextStyle.short
+        
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        if not self.notify_count.value:
-            notify_count = bot.default_settings["notify_count"]
-        else:
-            try:
-                notify_count = int(self.notify_count.value)
-            except:
-                await interaction.response.send_message(f"{self.notify_count.value} is not a valid number! Only positive whole numbers are allowed.", ephemeral=True)
-                return
+        # if not self.notify_count.value:
+        #     notify_count = bot.default_settings["notify_count"]
+        # else:
+        try:
+            notify_count = int(self.notify_count.value)
+        except:
+            await interaction.response.send_message(f"{self.notify_count.value} is not a valid number! Only positive whole numbers are allowed.", ephemeral=True)
+            return
             
         notify_str = str(notify_count)
         
@@ -186,18 +189,28 @@ class AddPingCountModal(discord.ui.View, title="Add new ping(s)"):
             plural = ""
             channel = "the following channel"
 
+        if self.notify_count.value > 1:
+            people = "people"
+            verb = "are"
+        else:
+            people = "person"
+            verb = "is"
+
             
-        confirmation_embed = discord.Embed(title="Set notify count", description=f'You will be notified when {notify_count} people are in {channel}:')
+        confirmation_embed = discord.Embed(title="Set notify count", description=f'You will be notified when **{notify_count} {people}** {verb} in {channel}:')
 
         channel_list = discord.Embed(description=self.links)
         # Respond to the user with the text they entered.
         await interaction.response.send_message(embeds=[confirmation_embed, channel_list], ephemeral=True)
 
-# class OpenModalView(discord.ui.View):
-#     @discord.ui.button(label="Continue")
-#     async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-#         # modal = AddPingModal()
-#         await interaction.response.send_modal(AddPingModal())
+class OpenModalView(discord.ui.View):
+    def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: str):
+        super().__init__()
+        self.channels = channels
+        self.links = links
+    @discord.ui.button(label="Continue")
+    async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(AddPingCountModal(self.channels, self.links))
 
 @bot.hybrid_group()
 async def ping(ctx: commands.Context):
