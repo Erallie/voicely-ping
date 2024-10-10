@@ -243,24 +243,12 @@ class RemovePingSelect(discord.ui.Select):
     #     return all_options[(index * 25): min((index * 25) + 25, len(all_options))]
         
 
-    def __init__(self, options: List[discord.SelectOption], index: int):
+    def __init__(self, options: List[discord.SelectOption], placeholder: str, index: int):
         # placeholder = ""
 
-        super().__init__(min_values=1, max_values=len(options), options = options)
+        super().__init__(min_values=1, max_values=len(options), options = options, placeholder=placeholder)
         self.index = index
         # print('got here')
-
-        
-    async def set_placeholder(self):
-        print(len(self.options))
-        start_guild = await option_to_data(self.options[0])["guild"].name
-        # end_index = min(25, len(self.options))
-        end_guild = await option_to_data(self.options[len(self.options) - 1])["guild"].name
-
-        if start_guild == end_guild:
-            return f"Pings in {start_guild}"
-        else:
-            return f"Servers {start_guild} to {end_guild}"
 
 
     async def callback(self, interaction: discord.Interaction):
@@ -291,8 +279,10 @@ class RemovePingView(discord.ui.View):
         
 
     async def setup(self):
-        async def setup_select(all_options: List[dict], index: int):
-            options_dict = all_options[(index * 25): min((index * 25) + 25, len(self.options))]
+        def truncate_options(all_options: List[dict], index: int):
+            return all_options[(index * 25): min((index * 25) + 25, len(self.options))]
+
+        async def setup_select(options_dict: List[dict]):
             options: List[discord.SelectOption] = []
             for dict in options_dict:
                 channel_str = dict["channel"]
@@ -313,19 +303,32 @@ class RemovePingView(discord.ui.View):
                 options.append(discord.SelectOption(label=f"{count_str} member{plural} in {channel.name}", value=f"{dict["guild"]}/{channel_str}/{count_str}", description=channel.guild.name))
             return options
         
+        
+        async def set_placeholder(options: List[dict]):
+            # print(len(options))
+            # start_data = await option_to_data(options[0])
+            start_guild = (await bot.fetch_guild(options[0]["guild"])).name
+            # end_data = options[len(options) - 1]["guild"].name
+            end_guild = (await bot.fetch_guild(options[len(options) - 1]["guild"])).name
+
+            if start_guild == end_guild:
+                return f"Pings in {start_guild}"
+            else:
+                return f"Servers {start_guild} to {end_guild}"
+        
         count = 0
         # print(len(self.options))
         while (self.index < len(self.options) - 1) and (count < 4):
-            # print('got here')
-            print(len(await setup_select(self.options, self.index)))
-            select = RemovePingSelect(await setup_select(self.options, self.index), self.index)
+            options = truncate_options(self.options, self.index)
+            select = RemovePingSelect(await setup_select(options), await set_placeholder(options), self.index)
             # await select.setup()
             self.add_item(select)
             self.index += 25
             count += 1
         
         if self.pages == 1 and self.index < len(self.options):
-            select = RemovePingSelect(await setup_select(self.options, self.index), self.index)
+            options = truncate_options(self.options, self.index)
+            select = RemovePingSelect(await setup_select(options), await set_placeholder(options), self.index)
             # await select.setup()
             self.add_item(select)
 
