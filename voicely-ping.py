@@ -272,6 +272,10 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 
                 pinged_user = await bot.fetch_user(pinged_user_id)
 
+                for member in member_list:
+                    if member.id is pinged_user.id:
+                        return
+
                 if count <= 5:
                     members_message = ""
                     for x in range(count):
