@@ -100,7 +100,7 @@ class AddPingChannelView(discord.ui.View):
         super().__init__()
         self.add_item(VoiceChannelSelect())
 
-class AddPingCountModal(discord.ui.Modal, title="Setup new ping(s)"):
+class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
     plural = ""
     channel_ref = ""
     
