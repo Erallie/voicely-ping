@@ -61,6 +61,7 @@ async def on_ready():
     """Triggered when the bot has successfully connected to Discord."""
     print(f'Logged in as {bot.user}')
 
+# region views and modals
 class VoiceChannelSelect(discord.ui.ChannelSelect):
     def __init__(self):
         super().__init__(placeholder="Select one or more channels", min_values=1, max_values=25)
@@ -212,6 +213,9 @@ class OpenModalView(discord.ui.View):
     async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(AddPingCountModal(self.channels, self.links))
 
+# endregion
+
+# region commands
 @bot.hybrid_group()
 async def ping(ctx: commands.Context):
     """Add or remove a ping."""
@@ -241,6 +245,8 @@ async def remove(ctx: commands.Context):
         await ctx.send(f'You will no longer receive voice channel notifications.', reference=ctx.message, ephemeral=True)
     else:
         await ctx.send(f'You were not signed up for notifications.', reference=ctx.message, ephemeral=True)
+
+# endregion
 
 @bot.event
 async def on_voice_state_update(member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
