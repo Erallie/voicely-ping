@@ -221,8 +221,8 @@ class OpenModalView(discord.ui.View):
 async def option_to_data(value: str):
     values = value.split('/')
     
-    guild = await bot.fetch_guild(int(values[0]))
-    channel = await bot.fetch_channel(int(values[1]))
+    guild = await bot.fetch_guild(values[0])
+    channel = await bot.fetch_channel(values[1])
 
     try:
         count = int(values[2])
