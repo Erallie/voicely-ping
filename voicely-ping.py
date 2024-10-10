@@ -28,10 +28,7 @@ def save_pings():
 # Define intents
 intents = discord.Intents.default()
 intents.message_content = True
-intents.guilds = True
 intents.voice_states = True
-intents.messages = True
-intents.members = True
 
 # Set up the bot
 class Bot(commands.Bot):
