@@ -3,6 +3,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from typing import List
+import math
 
 # Load bot token from file
 with open('../token', 'r') as file:
@@ -62,6 +63,8 @@ async def on_ready():
     print(f'Logged in as {bot.user}')
 
 # region views and modals
+
+# region add ping
 class VoiceChannelSelect(discord.ui.ChannelSelect):
     def __init__(self):
         super().__init__(placeholder="Select one or more channels", min_values=1, max_values=25)
@@ -212,6 +215,97 @@ class OpenModalView(discord.ui.View):
     @discord.ui.button(label="Continue")
     async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(AddPingCountModal(self.channels, self.links))
+# endregion
+
+# region remove ping
+async def option_to_data(value: str):
+    values = value.split('/')
+    
+    guild = bot.get_guild(int(values[0]))
+    channel = bot.get_channel(int(values[1]))
+
+    try:
+        count = int(values[2])
+    except:
+        print(f'Error converting {values[2]} to int.')
+        count = 0
+
+    return {
+        "guild": guild,
+        "channel": channel,
+        "count": count
+    }
+
+class RemovePingSelect(discord.ui.Select):
+    def get_options(all_options: List[discord.SelectOption], index: int):
+        # select_count = math.ceil(len(all_options) / 25)
+
+        return all_options[(index * 25): min((index * 25) + 25, len(all_options))]
+        
+    async def set_placeholder(self, index: int):
+        start_guild = option_to_data(self.options[index])["guild"].name
+        end_index = min(index + 25, len(self.options))
+        end_guild = option_to_data(self.options[end_index])["guild"].name
+
+        if start_guild == end_guild:
+            return f"Pings in {start_guild}"
+        else:
+            return f"Servers {start_guild} to {end_guild}"
+
+    def __init__(self, all_options: List[discord.SelectOption], index: int):
+        options = all_options[(index * 25): min((index * 25) + 25, len(all_options))]
+        placeholder = self.set_placeholder(index)
+        super().__init__(placeholder=placeholder, min_values=1, max_values=25, options = options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if len(self.values) <= 0:
+            await interaction.response.send_message(f"You must select at least one ping!", ephemeral=True)
+            return
+        
+        
+
+
+class RemovePingView(discord.ui.View):
+    pages = 0
+    # page = 0
+    select_count = 0
+    options: List[discord.SelectOption] = []
+    # index = 0
+    def __init__(self, options: List[discord.SelectOption], page: int):
+        super().__init__()
+        self.options = options
+        self.select_count = math.ceil(len(options) / 25)
+        self.page = page
+        if self.select_count == 5:
+            self.pages = 1
+        else:
+            self.pages = math.ceil(self.select_count / 4)
+
+        self.index = page * 4 * 25
+        
+        count = 0
+        while self.index < len(self.options) and count < 5:
+            self.add_item(RemovePingSelect(self.options, self.index))
+            self.index += 25
+            count += 1
+        
+        if self.pages == 1 and self.index < len(self.options):
+            self.add_item(RemovePingSelect(self.options, self.index))
+
+
+
+# def handle_view(view: RemovePingView):
+#     count = 0
+#     while view.index < len(view.options) and count < 5:
+#         view.add_item(RemovePingSelect(view.options, view.index))
+#         view.index += 25
+#         count += 1
+    
+#     if view.pages == 1 and view.index < len(view.options):
+#         view.add_item(RemovePingSelect(view.options, view.index))
+
+
+# endregion
 
 # endregion
 
@@ -235,16 +329,51 @@ async def remove(ctx: commands.Context):
     Command for users to disable notifications.
     Removes the user ID from the set of users to be notified for the current guild.
     """
-    guild_id = str(ctx.guild.id)
-    user_id = str(ctx.author.id)
+    # guild_id = str(ctx.guild.id)
+    user_id_str = str(ctx.author.id)
     # Remove the user from the notification set for the guild, if they exist
-    if guild_id in pings and user_id in pings[guild_id]:
-        pings[guild_id].remove(user_id)
-        # Save the updated notification list to the JSON file
-        save_pings()
-        await ctx.send(f'You will no longer receive voice channel notifications.', reference=ctx.message, ephemeral=True)
+    # listed_pings = {}
+    options: List[discord.SelectOption] = []
+    for guild_id_str in pings:
+        for channel_id_str in pings[guild_id_str]:
+            for count_str in pings[guild_id_str][channel_id_str]:
+                if user_id_str in pings[guild_id_str][channel_id_str][count_str]:
+                    channel = await bot.fetch_channel(int(channel_id_str))
+                    
+                    try:
+                        count = int(count_str)
+                    except:
+                        print(f"Error converting {count_str} to an int.")
+                        count = None
+                    
+                    if count is None:
+                        plural = "(s)"
+                    elif count > 1:
+                        plural = "s"
+                    else:
+                        plural = ""
+                    
+                    options.append(discord.SelectOption(label=f"{count_str} member{plural} in {channel.name}", value=f"{guild_id_str}/{channel_id_str}/{count_str}", description=channel.guild.name))
+    
+
+    if len(options) == 0:
+        await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=True)
     else:
-        await ctx.send(f'You were not signed up for notifications.', reference=ctx.message, ephemeral=True)
+        # async def sort_options(option: discord.SelectOption):
+        #     values = option_to_data(option.value)
+            
+        #     guild_name: str = values["guild"].name
+        #     channel_name: str = values["channel"].name
+
+        #     return guild_name + channel_name + str(values["count"])
+
+        # options.sort(key=sort_options)
+        embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
+        # view = RemovePingView(options, 0)
+        # view.setup()
+        # handle_view(view)
+        await ctx.send(embed=embed, view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
+
 
 # endregion
 
