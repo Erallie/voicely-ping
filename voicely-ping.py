@@ -221,8 +221,8 @@ class OpenModalView(discord.ui.View):
 async def option_to_data(value: str):
     values = value.split('/')
     
-    guild = bot.get_guild(int(values[0]))
-    channel = bot.get_channel(int(values[1]))
+    guild = await bot.fetch_guild(int(values[0]))
+    channel = await bot.fetch_channel(int(values[1]))
 
     try:
         count = int(values[2])
@@ -237,25 +237,31 @@ async def option_to_data(value: str):
     }
 
 class RemovePingSelect(discord.ui.Select):
-    def get_options(all_options: List[discord.SelectOption], index: int):
-        # select_count = math.ceil(len(all_options) / 25)
+    # def get_options(all_options: List[discord.SelectOption], index: int):
+    #     # select_count = math.ceil(len(all_options) / 25)
 
-        return all_options[(index * 25): min((index * 25) + 25, len(all_options))]
+    #     return all_options[(index * 25): min((index * 25) + 25, len(all_options))]
         
-    async def set_placeholder(self, index: int):
-        start_guild = option_to_data(self.options[index])["guild"].name
-        end_index = min(index + 25, len(self.options))
-        end_guild = option_to_data(self.options[end_index])["guild"].name
+
+    def __init__(self, options: List[discord.SelectOption], index: int):
+        # placeholder = ""
+
+        super().__init__(min_values=1, max_values=len(options), options = options)
+        self.index = index
+        # print('got here')
+
+        
+    async def set_placeholder(self):
+        print(len(self.options))
+        start_guild = await option_to_data(self.options[0])["guild"].name
+        # end_index = min(25, len(self.options))
+        end_guild = await option_to_data(self.options[len(self.options) - 1])["guild"].name
 
         if start_guild == end_guild:
             return f"Pings in {start_guild}"
         else:
             return f"Servers {start_guild} to {end_guild}"
 
-    def __init__(self, all_options: List[discord.SelectOption], index: int):
-        options = all_options[(index * 25): min((index * 25) + 25, len(all_options))]
-        placeholder = self.set_placeholder(index)
-        super().__init__(placeholder=placeholder, min_values=1, max_values=25, options = options)
 
     async def callback(self, interaction: discord.Interaction):
         if len(self.values) <= 0:
@@ -269,9 +275,9 @@ class RemovePingView(discord.ui.View):
     pages = 0
     # page = 0
     select_count = 0
-    options: List[discord.SelectOption] = []
+    options: List[dict] = []
     # index = 0
-    def __init__(self, options: List[discord.SelectOption], page: int):
+    def __init__(self, options: List[dict], page: int):
         super().__init__()
         self.options = options
         self.select_count = math.ceil(len(options) / 25)
@@ -283,14 +289,45 @@ class RemovePingView(discord.ui.View):
 
         self.index = page * 4 * 25
         
+
+    async def setup(self):
+        async def setup_select(all_options: List[dict], index: int):
+            options_dict = all_options[(index * 25): min((index * 25) + 25, len(self.options))]
+            options: List[discord.SelectOption] = []
+            for dict in options_dict:
+                channel_str = dict["channel"]
+                count_str = dict["count"]
+                channel = await bot.fetch_channel(dict["channel"])
+                try:
+                    count = int(count_str)
+                except:
+                    print(f"Error converting {count_str} to an int.")
+                    count = None
+                
+                if count is None:
+                    plural = "(s)"
+                elif count > 1:
+                    plural = "s"
+                else:
+                    plural = ""
+                options.append(discord.SelectOption(label=f"{count_str} member{plural} in {channel.name}", value=f"{dict["guild"]}/{channel_str}/{count_str}", description=channel.guild.name))
+            return options
+        
         count = 0
-        while self.index < len(self.options) and count < 5:
-            self.add_item(RemovePingSelect(self.options, self.index))
+        # print(len(self.options))
+        while (self.index < len(self.options) - 1) and (count < 4):
+            # print('got here')
+            print(len(await setup_select(self.options, self.index)))
+            select = RemovePingSelect(await setup_select(self.options, self.index), self.index)
+            # await select.setup()
+            self.add_item(select)
             self.index += 25
             count += 1
         
         if self.pages == 1 and self.index < len(self.options):
-            self.add_item(RemovePingSelect(self.options, self.index))
+            select = RemovePingSelect(await setup_select(self.options, self.index), self.index)
+            # await select.setup()
+            self.add_item(select)
 
 
 
@@ -333,33 +370,37 @@ async def remove(ctx: commands.Context):
     user_id_str = str(ctx.author.id)
     # Remove the user from the notification set for the guild, if they exist
     # listed_pings = {}
-    options: List[discord.SelectOption] = []
+    options: List[dict] = []
     for guild_id_str in pings:
         for channel_id_str in pings[guild_id_str]:
             for count_str in pings[guild_id_str][channel_id_str]:
                 if user_id_str in pings[guild_id_str][channel_id_str][count_str]:
-                    channel = await bot.fetch_channel(int(channel_id_str))
+                    # channel = await bot.fetch_channel(int(channel_id_str))
                     
-                    try:
-                        count = int(count_str)
-                    except:
-                        print(f"Error converting {count_str} to an int.")
-                        count = None
+                    # try:
+                    #     count = int(count_str)
+                    # except:
+                    #     print(f"Error converting {count_str} to an int.")
+                    #     count = None
                     
-                    if count is None:
-                        plural = "(s)"
-                    elif count > 1:
-                        plural = "s"
-                    else:
-                        plural = ""
+                    # if count is None:
+                    #     plural = "(s)"
+                    # elif count > 1:
+                    #     plural = "s"
+                    # else:
+                    #     plural = ""
                     
-                    options.append(discord.SelectOption(label=f"{count_str} member{plural} in {channel.name}", value=f"{guild_id_str}/{channel_id_str}/{count_str}", description=channel.guild.name))
+                    options.append({
+                        "guild": guild_id_str,
+                        "channel": channel_id_str,
+                        "count": count_str
+                    })
     
 
     if len(options) == 0:
         await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=True)
     else:
-        # async def sort_options(option: discord.SelectOption):
+        # async def sort_options(option):
         #     values = option_to_data(option.value)
             
         #     guild_name: str = values["guild"].name
@@ -369,10 +410,10 @@ async def remove(ctx: commands.Context):
 
         # options.sort(key=sort_options)
         embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
-        # view = RemovePingView(options, 0)
-        # view.setup()
+        view = RemovePingView(options, 0)
+        await view.setup()
         # handle_view(view)
-        await ctx.send(embed=embed, view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
+        await ctx.send(embed=embed, view=view, reference=ctx.message, ephemeral=True)
 
 
 # endregion
