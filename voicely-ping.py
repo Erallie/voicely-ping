@@ -182,6 +182,8 @@ class AddPingCountModal(discord.ui.Modal, title="Setup new ping(s)"):
             # }
             # endregion
 
+        save_pings()
+
         if len(self.channels) > 1:
             plural = "s"
             channel = "any of the following channels"
