@@ -191,7 +191,7 @@ class AddPingCountModal(discord.ui.Modal, title="Setup new ping(s)"):
             plural = ""
             channel = "the following channel"
 
-        if self.notify_count.value > 1:
+        if notify_count > 1:
             people = "people"
             verb = "are"
         else:
