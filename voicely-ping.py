@@ -199,7 +199,7 @@ class AddPingCountModal(discord.ui.Modal, title="Setup new ping(s)"):
             verb = "is"
 
             
-        confirmation_embed = discord.Embed(title="Set notify count", description=f'You will be notified when **{notify_count} {people}** {verb} in {channel}:')
+        confirmation_embed = discord.Embed(title=f"Ping{plural} set!", description=f'You will be notified when **{notify_count} {people}** {verb} in {channel}:')
 
         channel_list = discord.Embed(description=self.links)
         # Respond to the user with the text they entered.
