@@ -379,7 +379,12 @@ async def remove(ctx: commands.Context):
             guild_name: str = option["guild_name"]
             channel_name: str = option["channel_name"]
 
-            return f"{guild_name} {channel_name} {option["count_str"]}"
+            count_str = option["count_str"]
+
+            while len(count_str) > 3:
+                count_str = f"0{count_str}"
+
+            return f"{guild_name} {channel_name} {count_str}"
 
         options.sort(key=sort_options)
         embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
