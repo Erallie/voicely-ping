@@ -251,7 +251,7 @@ class RemovePingSelect(discord.ui.Select):
                 plural = "s"
             else:
                 plural = ""
-            options.append(discord.SelectOption(label=f"{dict["channel_name"]}: {count_str} member{plural}", value=f"{dict['guild_str']}/{dict["channel_str"]}/{count_str}", description=dict["guild_name"]))
+            options.append(discord.SelectOption(label=f"{dict['channel_name']}: {count_str} member{plural}", value=f"{dict['guild_str']}/{dict['channel_str']}/{count_str}", description=dict["guild_name"]))
         return options
         
     def set_placeholder(self, options: List[dict]):
