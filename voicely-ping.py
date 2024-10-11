@@ -226,6 +226,13 @@ class OpenModalView(discord.ui.View):
 # endregion
 
 # region remove ping
+def remove_ping_embed(page: int, pages: int):
+    if pages > 1:
+        title = f"Remove pings *({page + 1}/{pages})*"
+    else:
+        title = "Remove pings"
+    return discord.Embed(title=title, description=f"Choose from the dropdowns below to remove those pings.")
+
 class RemovePingSelect(discord.ui.Select):    
     def setup_select(self, options_dict: List[dict]):
         options: List[discord.SelectOption] = []
@@ -290,20 +297,26 @@ class RemovePingSelect(discord.ui.Select):
             plural = ""
         await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
 
+def get_select_pages(all_options: List[dict]):
+    select_count = math.ceil(len(all_options) / 25)
+    if select_count == 5:
+        pages = 1
+    else:
+        pages = math.ceil(select_count / 4)
+
+    return pages
+
 class RemovePingView(discord.ui.View):
     pages = 0
-    select_count = 0
+    # select_count = 0
     all_options: List[dict] = []
     count = 0
+    page = 0
     def __init__(self, options: List[dict], page: int):
         super().__init__()
         self.all_options = options
-        self.select_count = math.ceil(len(options) / 25)
         self.page = page
-        if self.select_count == 5:
-            self.pages = 1
-        else:
-            self.pages = math.ceil(self.select_count / 4)
+        self.pages = get_select_pages(options)
 
         self.index = page * 4 * 25
         
@@ -320,6 +333,16 @@ class RemovePingView(discord.ui.View):
         
         if self.pages == 1 and self.index < len(self.all_options):
             add_option()
+
+    if pages > 0:
+        if page != 0:
+            @discord.ui.button(label="Next Page")
+            async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.send_message(embed=remove_ping_embed(self.page, self.pages), view=RemovePingView(self.all_options, self.page + 1), ephemeral=True)
+        if page < pages - 1:
+            @discord.ui.button(label="Previous Page")
+            async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+                await interaction.response.send_message(embed=remove_ping_embed(self.page, self.pages), view=RemovePingView(self.all_options, self.page - 1), ephemeral=True)
         
 # endregion
 
@@ -385,9 +408,10 @@ async def remove(ctx: commands.Context):
             return f"{guild_name} {channel_name} {count_str}"
 
         options.sort(key=sort_options)
-        embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
+        # embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
         # view = RemovePingView(options, 0)
-        await ctx.send(embed=embed, view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
+        
+        await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
 
 
 # endregion
