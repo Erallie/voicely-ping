@@ -381,7 +381,7 @@ async def remove(ctx: commands.Context):
 
             count_str = option["count_str"]
 
-            while len(count_str) > 3:
+            while len(count_str) < 3:
                 count_str = f"0{count_str}"
 
             return f"{guild_name} {channel_name} {count_str}"
