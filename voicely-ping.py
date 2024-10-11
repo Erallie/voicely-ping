@@ -9,23 +9,6 @@ import math
 with open('../token', 'r') as file:
     bot_token = file.read().strip()
 
-# Load notify data from file (or return an empty dictionary if the file doesn't exist)
-def load_pings():
-    try:
-        with open('pings.json', 'r') as f:
-            # Load JSON data into a dictionary
-            return json.load(f)
-    except FileNotFoundError as error:
-        print(f"Cannot load pings.json: {error}")
-        # If the file doesn't exist, return an empty dictionary
-        return {}
-
-# Save the current notify data to a JSON file
-def save_pings():
-    with open('pings.json', 'w') as f:
-        # Write the dictionary to the JSON file
-        json.dump(pings, f)
-
 # Define intents
 intents = discord.Intents.default()
 intents.message_content = True
@@ -53,9 +36,30 @@ class Bot(commands.Bot):
 # Create the bot instance with a command prefix
 bot = Bot()
 
+# region save and load settings
 # Store users who want to be notified in a dictionary {guild_id: set(user_ids)}
+# Load notify data from file (or return an empty dictionary if the file doesn't exist)
+def load_pings():
+    try:
+        with open('pings.json', 'r') as f:
+            # Load JSON data into a dictionary
+            return json.load(f)
+    except FileNotFoundError as error:
+        print(f"Cannot load pings.json: {error}")
+        # If the file doesn't exist, return an empty dictionary
+        return {}
+
+
 # Load the data from the JSON file when the bot starts
 pings = load_pings()
+
+# Save the current notify data to a JSON file
+def save_pings():
+    with open('pings.json', 'w') as f:
+        # Write the dictionary to the JSON file
+        json.dump(pings, f)
+
+# endregion
 
 @bot.event
 async def on_ready():
