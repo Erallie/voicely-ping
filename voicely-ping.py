@@ -226,12 +226,7 @@ class OpenModalView(discord.ui.View):
 # endregion
 
 # region remove ping
-class RemovePingSelect(discord.ui.Select):
-    # def get_options(all_options: List[discord.SelectOption], index: int):
-    #     # select_count = math.ceil(len(all_options) / 25)
-
-    #     return all_options[(index * 25): min((index * 25) + 25, len(all_options))]
-        
+class RemovePingSelect(discord.ui.Select):    
     def setup_select(self, options_dict: List[dict]):
         options: List[discord.SelectOption] = []
         for dict in options_dict:
@@ -295,14 +290,11 @@ class RemovePingSelect(discord.ui.Select):
             plural = ""
         await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
 
-
 class RemovePingView(discord.ui.View):
     pages = 0
-    # page = 0
     select_count = 0
     all_options: List[dict] = []
     count = 0
-    # index = 0
     def __init__(self, options: List[dict], page: int):
         super().__init__()
         self.all_options = options
@@ -316,9 +308,7 @@ class RemovePingView(discord.ui.View):
         self.index = page * 4 * 25
         
         def add_option():
-            # print(str(self.index) + ":" + str(min(self.index + 25, len(self.all_options))))
             options = self.all_options[self.index:min(self.index + 25, len(self.all_options))]
-            # print(len(options))
             select = RemovePingSelect(options, self.index)
             self.add_item(select)
             self.index += 25
@@ -380,7 +370,6 @@ async def remove(ctx: commands.Context):
                         "count_str": count_str
                     })
     
-
     if len(options) == 0:
         await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=True)
     else:
