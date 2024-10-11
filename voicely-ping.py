@@ -73,30 +73,30 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
     async def callback(self, interaction: discord.Interaction):
         if len(self.values) <= 0:
             await interaction.response.send_message(f"You must select at least one channel!", ephemeral=True)
+            return
         
+        # links = []
+        all_links = ""
+        for channel in self.values:
+            # links.append(f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}")
+            all_links += f"\n- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
+
+        # all_links = "\n".join(links)
+
+        if len(self.values) > 1:
+            plural = "s"
+            channel = "any of the following channels"
         else:
-            # links = []
-            all_links = ""
-            for channel in self.values:
-                # links.append(f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}")
-                all_links += f"\n- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
+            plural = ""
+            channel = "the following channel"
 
-            # all_links = "\n".join(links)
+        confirmation_embed = discord.Embed(title="Selected channels", description=f"You have selected the following channel{plural}:{all_links}")
 
-            if len(self.values) > 1:
-                plural = "s"
-                channel = "any of the following channels"
-            else:
-                plural = ""
-                channel = "the following channel"
-
-            confirmation_embed = discord.Embed(title="Selected channels", description=f"You have selected the following channel{plural}:{all_links}")
-
-            # channel_list = discord.Embed(description=all_links)
-            
-            count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
-            
-            await interaction.response.send_message(embeds=[confirmation_embed, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
+        # channel_list = discord.Embed(description=all_links)
+        
+        count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
+        
+        await interaction.response.send_message(embeds=[confirmation_embed, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
 
 class AddPingChannelView(discord.ui.View):
     def __init__(self):
@@ -143,75 +143,76 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
         else:
             if notify_count <= 0:
                 await interaction.response.send_message(error_message, ephemeral=True)
-            else:    
-                notify_str = str(notify_count)
+                return
+            
+            notify_str = str(notify_count)
+            
+            guild_id = str(interaction.guild.id)
+            user_id = str(interaction.user.id)
+            # Add the user to the notification set for the guild
+            if guild_id not in pings:
+                pings[guild_id] = {}
+            # if user_id not in pings[guild_id]:
+            #     pings[guild_id][user_id] = {}
+
+            for channel in self.channels:
+                channel_id = str(channel.id)
+                if channel_id not in pings[guild_id]:
+                    pings[guild_id][channel_id] = {}
+                if notify_str not in pings[guild_id][channel_id]:
+                    pings[guild_id][channel_id][notify_str] = []
                 
-                guild_id = str(interaction.guild.id)
-                user_id = str(interaction.user.id)
-                # Add the user to the notification set for the guild
-                if guild_id not in pings:
-                    pings[guild_id] = {}
-                # if user_id not in pings[guild_id]:
-                #     pings[guild_id][user_id] = {}
+                if user_id not in pings[guild_id][channel_id][notify_str]:
+                    pings[guild_id][channel_id][notify_str].append(user_id)
 
-                for channel in self.channels:
-                    channel_id = str(channel.id)
-                    if channel_id not in pings[guild_id]:
-                        pings[guild_id][channel_id] = {}
-                    if notify_str not in pings[guild_id][channel_id]:
-                        pings[guild_id][channel_id][notify_str] = []
-                    
-                    if user_id not in pings[guild_id][channel_id][notify_str]:
-                        pings[guild_id][channel_id][notify_str].append(user_id)
+                # region example
+                # This dictionary will look something like this:
+                # {
+                #     guild_id_1: {
+                #         channel_id_1: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         },
+                #         channel_id_2: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         }
+                #     },
+                #     guild_id_2: {
+                #         channel_id_1: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         },
+                #         channel_id_2: {
+                #             count_1: [user_id_1, user_id_2],
+                #             count_2: [user_id_1, user_id_2]
+                #         }
+                #     }
+                # }
+                # endregion
 
-                    # region example
-                    # This dictionary will look something like this:
-                    # {
-                    #     guild_id_1: {
-                    #         channel_id_1: {
-                    #             count_1: [user_id_1, user_id_2],
-                    #             count_2: [user_id_1, user_id_2]
-                    #         },
-                    #         channel_id_2: {
-                    #             count_1: [user_id_1, user_id_2],
-                    #             count_2: [user_id_1, user_id_2]
-                    #         }
-                    #     },
-                    #     guild_id_2: {
-                    #         channel_id_1: {
-                    #             count_1: [user_id_1, user_id_2],
-                    #             count_2: [user_id_1, user_id_2]
-                    #         },
-                    #         channel_id_2: {
-                    #             count_1: [user_id_1, user_id_2],
-                    #             count_2: [user_id_1, user_id_2]
-                    #         }
-                    #     }
-                    # }
-                    # endregion
+            save_pings()
 
-                save_pings()
+            if len(self.channels) > 1:
+                plural = "s"
+                channel = "any of the following channels"
+            else:
+                plural = ""
+                channel = "the following channel"
 
-                if len(self.channels) > 1:
-                    plural = "s"
-                    channel = "any of the following channels"
-                else:
-                    plural = ""
-                    channel = "the following channel"
+            if notify_count > 1:
+                people = "people"
+                verb = "are"
+            else:
+                people = "person"
+                verb = "is"
 
-                if notify_count > 1:
-                    people = "people"
-                    verb = "are"
-                else:
-                    people = "person"
-                    verb = "is"
+                
+            confirmation_embed = discord.Embed(title=f"Ping{plural} set!", description=f'You will be notified when **{notify_count} {people}** {verb} in {channel}:')
 
-                    
-                confirmation_embed = discord.Embed(title=f"Ping{plural} set!", description=f'You will be notified when **{notify_count} {people}** {verb} in {channel}:')
-
-                channel_list = discord.Embed(description=self.links)
-                # Respond to the user with the text they entered.
-                await interaction.response.send_message(embeds=[confirmation_embed, channel_list], ephemeral=True)
+            channel_list = discord.Embed(description=self.links)
+            # Respond to the user with the text they entered.
+            await interaction.response.send_message(embeds=[confirmation_embed, channel_list], ephemeral=True)
 
 class OpenModalView(discord.ui.View):
     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: str):
@@ -268,30 +269,31 @@ class RemovePingSelect(discord.ui.Select):
     async def callback(self, interaction: discord.Interaction):
         if len(self.values) <= 0:
             await interaction.response.send_message(f"You must select at least one ping!", ephemeral=True)
+            return
+        
+        for value in self.values:
+            values = value.split('/')
+            guild_id = values[0]
+            channel_id = values[1]
+            count_str = values[2]
+
+            pings[guild_id][channel_id][count_str].remove(str(interaction.user.id))
+
+            if len(pings[guild_id][channel_id][count_str]) == 0:
+                del pings[guild_id][channel_id][count_str]
+            if len(pings[guild_id][channel_id]) == 0:
+                del pings[guild_id][channel_id]
+            if len(pings[guild_id]) == 0:
+                del pings[guild_id]
+
+        save_pings()
+
+        ping_count = len(self.values)
+        if ping_count > 1:
+            plural = "s"
         else:
-            for value in self.values:
-                values = value.split('/')
-                guild_id = values[0]
-                channel_id = values[1]
-                count_str = values[2]
-
-                pings[guild_id][channel_id][count_str].remove(str(interaction.user.id))
-
-                if len(pings[guild_id][channel_id][count_str]) == 0:
-                    del pings[guild_id][channel_id][count_str]
-                if len(pings[guild_id][channel_id]) == 0:
-                    del pings[guild_id][channel_id]
-                if len(pings[guild_id]) == 0:
-                    del pings[guild_id]
-
-            save_pings()
-
-            ping_count = len(self.values)
-            if ping_count > 1:
-                plural = "s"
-            else:
-                plural = ""
-            await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
+            plural = ""
+        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
 
 
 class RemovePingView(discord.ui.View):
@@ -331,6 +333,13 @@ class RemovePingView(discord.ui.View):
         
 # endregion
 
+# endregion
+
+# region Reused errors
+def get_error(action: str, error = None):
+    if error:
+        return f"I could not {action}: {error}"
+    return f"I encountered an error while trying to {action}."
 # endregion
 
 # region commands
