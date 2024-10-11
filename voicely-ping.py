@@ -96,7 +96,6 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
         # channel_list = discord.Embed(description=all_links)
         
         count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
-        # await interaction.response.send_modal(AddPingCountModal(self.values, all_links))
         
         await interaction.response.send_message(embeds=[confirmation_embed, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
 
@@ -227,8 +226,6 @@ class OpenModalView(discord.ui.View):
 # endregion
 
 # region remove ping
-
-
 class RemovePingSelect(discord.ui.Select):
     # def get_options(all_options: List[discord.SelectOption], index: int):
     #     # select_count = math.ceil(len(all_options) / 25)
