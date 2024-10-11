@@ -134,10 +134,17 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
         # if not self.notify_count.value:
         #     notify_count = bot.default_settings["notify_count"]
         # else:
+
+        error_message = f"`{self.notify_count.value}` is not a valid number! Only positive whole numbers are allowed."
+
         try:
             notify_count = int(self.notify_count.value)
         except:
-            await interaction.response.send_message(f"{self.notify_count.value} is not a valid number! Only positive whole numbers are allowed.", ephemeral=True)
+            await interaction.response.send_message(error_message, ephemeral=True)
+            return
+        
+        if notify_count <= 0:
+            await interaction.response.send_message(error_message, ephemeral=True)
             return
             
         notify_str = str(notify_count)
