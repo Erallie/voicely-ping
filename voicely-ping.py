@@ -35,7 +35,7 @@ intents.members = True
 # Set up the bot
 class Bot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix="!", intents=intents)
+        super().__init__(command_prefix="$", intents=intents)
         self.default_settings = {
             "notify_count": 3,
             "reset_count": 0
