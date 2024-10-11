@@ -76,27 +76,29 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
             return
         
         
-        links = []
+        # links = []
+        all_links = ""
         for channel in self.values:
-            links.append(f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}")
+            # links.append(f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}")
+            all_links += f"\n- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
 
-        all_links = "\n".join(links)
+        # all_links = "\n".join(links)
 
-        if len(links) > 1:
+        if len(self.values) > 1:
             plural = "s"
             channel = "any of the following channels"
         else:
             plural = ""
             channel = "the following channel"
 
-        confirmation_embed = discord.Embed(title="Selected channels", description=f"You have selected the following channel{plural}:")
+        confirmation_embed = discord.Embed(title="Selected channels", description=f"You have selected the following channel{plural}:{all_links}")
 
-        channel_list = discord.Embed(description=all_links)
+        # channel_list = discord.Embed(description=all_links)
         
         count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
         # await interaction.response.send_modal(AddPingCountModal(self.values, all_links))
         
-        await interaction.response.send_message(embeds=[confirmation_embed, channel_list, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
+        await interaction.response.send_message(embeds=[confirmation_embed, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
 
 class AddPingChannelView(discord.ui.View):
     def __init__(self):
