@@ -30,7 +30,7 @@ def save_pings():
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
-# intents.members
+intents.members = True
 
 # Set up the bot
 class Bot(commands.Bot):
@@ -360,8 +360,8 @@ async def remove(ctx: commands.Context):
             for count_str in pings[guild_id_str][channel_id_str]:
                 if user_id_str in pings[guild_id_str][channel_id_str][count_str]:
                     
-                    channel = await bot.fetch_channel(channel_id_str)
-                    guild = await bot.fetch_guild(guild_id_str)
+                    channel = bot.get_channel(int(channel_id_str))
+                    guild = bot.get_guild(int(guild_id_str))
 
                     options.append({
                         "guild_str": guild_id_str,
@@ -423,7 +423,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     
                 bot.notified_channels[pinged_user_id].append(after.channel.id)
 
-                pinged_user = await bot.fetch_user(pinged_user_id)
+                pinged_user = bot.get_user(int(pinged_user_id))
 
                 for member in member_list:
                     if member.id == pinged_user.id:
