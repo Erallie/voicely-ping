@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 from typing import List
 import math
+from enum import Enum
 
 # Load bot token from file
 with open('../token', 'r') as file:
@@ -301,6 +302,10 @@ class RemovePingSelect(discord.ui.Select):
             plural = ""
         await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
 
+class NavigationType(Enum):
+    next = "next"
+    previous = "previous"
+
 def get_select_pages(all_options: List[dict]):
     select_count = math.ceil(len(all_options) / 25)
     if select_count == 5:
@@ -310,12 +315,30 @@ def get_select_pages(all_options: List[dict]):
 
     return pages
 
+class NavigationButton(discord.ui.Button):
+    def __init__(self, navigation_type: NavigationType, all_options: List[dict], page: int, pages: int):
+        self.all_options = all_options
+        self.page = page
+        self.pages = pages
+        if navigation_type == NavigationType.next:
+            # print('got here')
+            label = "Next Page"
+            self.next_page = self.page + 1
+        elif navigation_type == NavigationType.previous:
+            label = "Previous Page"
+            self.next_page = self.page - 1
+        super().__init__(label=label)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(embed=remove_ping_embed(self.page, self.pages), view=RemovePingView(self.all_options, self.next_page), ephemeral=True)
+
+
 class RemovePingView(discord.ui.View):
-    pages = 0
-    # select_count = 0
-    all_options: List[dict] = []
-    count = 0
-    page = 0
+    # pages = 0
+    # # select_count = 0
+    # all_options: List[dict] = []
+    # count = 0
+    # page = 0
     def __init__(self, options: List[dict], page: int):
         super().__init__()
         self.all_options = options
@@ -323,6 +346,8 @@ class RemovePingView(discord.ui.View):
         self.pages = get_select_pages(options)
 
         self.index = page * 4 * 25
+
+        self.count = 0
         
         def add_option():
             options = self.all_options[self.index:min(self.index + 25, len(self.all_options))]
@@ -332,21 +357,20 @@ class RemovePingView(discord.ui.View):
             self.count += 1
 
         
-        while (self.index < len(self.all_options)) and (self.count < 5):
+        while (self.index < len(self.all_options)) and (self.count < 4):
             add_option()
         
         if self.pages == 1 and self.index < len(self.all_options):
             add_option()
+        
+        self.add_navigation()
 
-    if pages > 0:
-        if page != 0:
-            @discord.ui.button(label="Next Page")
-            async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.send_message(embed=remove_ping_embed(self.page, self.pages), view=RemovePingView(self.all_options, self.page + 1), ephemeral=True)
-        if page < pages - 1:
-            @discord.ui.button(label="Previous Page")
-            async def previous_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-                await interaction.response.send_message(embed=remove_ping_embed(self.page, self.pages), view=RemovePingView(self.all_options, self.page - 1), ephemeral=True)
+    def add_navigation(self):
+        if self.pages > 1:
+            if self.page < self.pages - 1:
+                self.add_item(NavigationButton(NavigationType.next, self.all_options, self.page, self.pages))
+            if self.page != 0:
+                self.add_item(NavigationButton(NavigationType.previous, self.all_options, self.page, self.pages))
         
 # endregion
 
