@@ -127,7 +127,7 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
 
     notify_count = discord.ui.TextInput(
         label="Member count",
-        placeholder=str(bot.default_settings["notify_count"]),
+        placeholder="Enter a number",
         max_length=3,
         style=discord.TextStyle.short
         
