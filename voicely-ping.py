@@ -329,9 +329,11 @@ class NavigationButton(discord.ui.Button):
         if navigation_type == NavigationType.next:
             # print('got here')
             label = "Next Page"
+            # emoji = "⏩"
             self.next_page = self.page + 1
         elif navigation_type == NavigationType.previous:
             label = "Previous Page"
+            # emoji = "⏪"
             self.next_page = self.page - 1
         super().__init__(label=label)
 
