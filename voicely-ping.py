@@ -25,8 +25,16 @@ class Bot(commands.Bot):
             "reset_count": 0
         }
         self.notified_channels = {}
-        # This dictionary will look like this: {
-        #     "user_id": [channel_id_1, channel_id_2]
+        # This dictionary will look like this:
+        # {
+        #     "user_id_1": {
+        #         "channel_id_1": [notify_count_1, notify_count_2],
+        #         "channel_id_2": [notify_count_1, notify_count_2]
+        #     },
+        #     "user_id_2": {
+        #         "channel_id_1": [notify_count_1, notify_count_2],
+        #         "channel_id_2": [notify_count_1, notify_count_2]
+        #     }
         # }
         # make sure to not notify people if they are already in the channel
 
@@ -460,9 +468,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     """
     # region Reset pings
     if before.channel is not None and len(before.channel.members) == 0:
-        for user_id in bot.notified_channels:
-            if before.channel.id in bot.notified_channels[user_id]:
-                bot.notified_channels[user_id].remove(before.channel.id)
+        for user_id_str in bot.notified_channels:
+            if before.channel.id in bot.notified_channels[user_id_str]:
+                del bot.notified_channels[user_id_str][before.channel.id]
     # endregion
     # region Ping
     if after.channel is not None:
@@ -474,24 +482,29 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         # endregion
         count = len(member_list)
         count_str = str(count)
-        guild_id = str(after.channel.guild.id)
-        channel_id = str(after.channel.id)
-        if guild_id in pings and channel_id in pings[guild_id] and count_str in pings[guild_id][channel_id]:
-            for pinged_user_id in pings[guild_id][channel_id][count_str]:
-                if pinged_user_id in bot.notified_channels:
-                    if after.channel.id in bot.notified_channels[pinged_user_id]:
-                        return
+        guild_id_str = str(after.channel.guild.id)
+        channel_id = after.channel.id
+        channel_id_str = str(channel_id)
+        if guild_id_str in pings and channel_id_str in pings[guild_id_str] and count_str in pings[guild_id_str][channel_id_str]:
+            for pinged_id_str in pings[guild_id_str][channel_id_str][count_str]:
+                if pinged_id_str in bot.notified_channels:
+                    if channel_id in bot.notified_channels[pinged_id_str] and count in bot.notified_channels[pinged_id_str][channel_id]:
+                            return
                 else:
-                    bot.notified_channels[pinged_user_id] = []
+                    bot.notified_channels[pinged_id_str] = {}
                     
-                bot.notified_channels[pinged_user_id].append(after.channel.id)
 
-                pinged_user = bot.get_user(int(pinged_user_id))
+                if channel_id not in bot.notified_channels[pinged_id_str]:
+                    bot.notified_channels[pinged_id_str][channel_id] = []
+                    
+                bot.notified_channels[pinged_id_str][channel_id].append(count)
+
+                pinged_user = bot.get_user(int(pinged_id_str))
 
                 for member in member_list:
                     if member.id == pinged_user.id:
                         return
-
+                
                 if count <= 5:
                     members_message = ""
                     for x in range(count):
@@ -512,7 +525,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     verb = "are"
                 
                 try:
-                    await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id}/{channel_id}")
+                    await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
                 except discord.Forbidden as error:
                     print(f"Could not send ping to {pinged_user.name}: {error}")
     # endregion
