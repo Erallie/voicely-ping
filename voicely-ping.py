@@ -336,7 +336,7 @@ class NavigationButton(discord.ui.Button):
         super().__init__(label=label)
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(embed=remove_ping_embed(self.page, self.pages), view=RemovePingView(self.all_options, self.next_page), ephemeral=True)
+        await interaction.response.send_message(embed=remove_ping_embed(self.next_page, self.pages), view=RemovePingView(self.all_options, self.next_page), ephemeral=True)
 
 
 class RemovePingView(discord.ui.View):
