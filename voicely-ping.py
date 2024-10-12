@@ -467,6 +467,11 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     # region Ping
     if after.channel is not None:
         member_list = after.channel.members
+        # region ignore bots
+        for member in member_list:
+            if member.bot:
+                member_list.remove(member)
+        # endregion
         count = len(member_list)
         count_str = str(count)
         guild_id = str(after.channel.guild.id)
