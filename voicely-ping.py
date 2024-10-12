@@ -470,6 +470,10 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     if before.channel is not None and len(before.channel.members) == 0:
         for user_id_str in bot.notified_channels:
             if before.channel.id in bot.notified_channels[user_id_str]:
+                for this_count in bot.notified_channels[user_id_str][before.channel.id]:
+                    message: discord.Message | None = bot.notified_channels[user_id_str][before.channel.id][this_count]
+                    if message is not None:
+                        await message.edit(content=message.content.replace("is currently", "was").replace("are currently", "were") + ".")
                 del bot.notified_channels[user_id_str][before.channel.id]
     # endregion
     # region Ping
@@ -494,9 +498,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     bot.notified_channels[pinged_id_str] = {}
 
                 if channel_id not in bot.notified_channels[pinged_id_str]:
-                    bot.notified_channels[pinged_id_str][channel_id] = []
+                    bot.notified_channels[pinged_id_str][channel_id] = {}
                     
-                bot.notified_channels[pinged_id_str][channel_id].append(count)
+                bot.notified_channels[pinged_id_str][channel_id][count] = None
 
                 pinged_user = bot.get_user(int(pinged_id_str))
                 
@@ -523,9 +527,12 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     verb = "are"
                 
                 try:
-                    await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
+                    message = await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
                 except discord.Forbidden as error:
                     print(f"Could not send ping to {pinged_user.name}: {error}")
+                
+                else:
+                    bot.notified_channels[pinged_id_str][channel_id][count] = message
     # endregion
 
 
