@@ -476,9 +476,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     if after.channel is not None:
         member_list = after.channel.members
         # region ignore bots
-        for member in member_list:
-            if member.bot:
-                member_list.remove(member)
+        for member_check in member_list:
+            if member_check.bot:
+                member_list.remove(member_check)
         # endregion
         count = len(member_list)
         count_str = str(count)
@@ -489,10 +489,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             for pinged_id_str in pings[guild_id_str][channel_id_str][count_str]:
                 if pinged_id_str in bot.notified_channels:
                     if channel_id in bot.notified_channels[pinged_id_str] and count in bot.notified_channels[pinged_id_str][channel_id]:
-                            return
+                            continue
                 else:
                     bot.notified_channels[pinged_id_str] = {}
-                    
 
                 if channel_id not in bot.notified_channels[pinged_id_str]:
                     bot.notified_channels[pinged_id_str][channel_id] = []
@@ -500,10 +499,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                 bot.notified_channels[pinged_id_str][channel_id].append(count)
 
                 pinged_user = bot.get_user(int(pinged_id_str))
-
-                for member in member_list:
-                    if member.id == pinged_user.id:
-                        return
+                
+                if pinged_user in member_list:
+                    continue
                 
                 if count <= 5:
                     members_message = ""
