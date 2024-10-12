@@ -232,11 +232,17 @@ class OpenModalView(discord.ui.View):
 
 # region remove ping
 def remove_ping_embed(page: int, pages: int):
+    title = "Remove pings"
+    description = "Choose from the dropdowns below to remove those pings."
+    embed = discord.Embed(title=title, description=description)
     if pages > 1:
-        title = f"Remove pings *({page + 1}/{pages})*"
-    else:
-        title = "Remove pings"
-    return discord.Embed(title=title, description=f"Choose from the dropdowns below to remove those pings.")
+        # title = f"Remove pings `({page + 1}/{pages})`"
+        # return 
+        embed.set_footer(text=f"Page {page + 1} of {pages}")
+    # else:
+        # title = "Remove pings"
+    return embed
+    
 
 class RemovePingSelect(discord.ui.Select):    
     def setup_select(self, options_dict: List[dict]):
