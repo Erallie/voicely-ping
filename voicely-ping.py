@@ -121,7 +121,7 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
             confirmation_embeds.append(discord.Embed(title=title, description=confirmation_texts[x]))
 
         
-        count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
+        count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nUnless you set up more than one ping for it, you won\'t be notified again until after **everyone has left** the channel.")
 
         confirmation_embeds.append(count_embed)
         
