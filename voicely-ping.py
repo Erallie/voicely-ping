@@ -422,7 +422,12 @@ async def ping(ctx: commands.Context):
     if ctx.invoked_subcommand is None:
         await ctx.send(f"{ctx.invoked_subcommand} is not a valid subcommand.", reference=ctx.message, ephemeral=True)
 
+def is_in_guild(interaction: discord.Interaction) -> bool:
+    return interaction.guild is not None
+
 @ping.command()
+@commands.check(is_in_guild)
+@app_commands.check(is_in_guild)
 async def add(ctx: commands.Context):
     """Add a voice channel for you to be notified in dm\'s for."""
 
