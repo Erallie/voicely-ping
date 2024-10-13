@@ -104,7 +104,7 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
         for channel in self.values:
             this_text = f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
             # print(len(this_text))
-            if len(all_links + "\n" + this_text) > 200:
+            if len(all_links + "\n" + this_text) > 2048:
                 confirmation_texts.append(all_links)
                 all_links = this_text
             else:
