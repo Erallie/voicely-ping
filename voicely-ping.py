@@ -88,13 +88,7 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
             await interaction.response.send_message(f"You must select at least one channel!", ephemeral=True)
             return
         
-        # links = []
-        all_links = ""
-        for channel in self.values:
-            # links.append(f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}")
-            all_links += f"\n- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
-
-        # all_links = "\n".join(links)
+        
 
         if len(self.values) > 1:
             plural = "s"
@@ -103,13 +97,35 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
             plural = ""
             channel = "the following channel"
 
-        confirmation_embed = discord.Embed(title="Selected channels", description=f"You have selected the following channel{plural}:{all_links}")
+        confirmation_texts: List[str] = []
+        all_links = f"You have selected the following channel{plural}:"
+        for channel in self.values:
+            this_text = f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
+            # print(len(this_text))
+            if len(all_links + "\n" + this_text) > 2048:
+                confirmation_texts.append(all_links)
+                all_links = this_text
+            else:
+                all_links += "\n" + this_text
+        
+        # print(len(all_links))
+        confirmation_texts.append(all_links)
 
-        # channel_list = discord.Embed(description=all_links)
+        confirmation_embeds: List[discord.Embed] = []
+        for x in range(len(confirmation_texts)):
+            if x > 0:
+                title = None
+            else:
+                title = "Selected channels"
+
+            confirmation_embeds.append(discord.Embed(title=title, description=confirmation_texts[x]))
+
         
         count_embed = discord.Embed(title="Set notify count", description=f"In the modal that opens, type a number that represents the **number of people** that need to be in the channel{plural} you selected for you to be notified.\n\nYou won\'t be notified again until after everyone has left the channel.")
+
+        confirmation_embeds.append(count_embed)
         
-        await interaction.response.send_message(embeds=[confirmation_embed, count_embed], view=OpenModalView(self.values, all_links), ephemeral=True)
+        await interaction.response.send_message(embeds=confirmation_embeds, view=OpenModalView(self.values, all_links), ephemeral=True)
 
 class AddPingChannelView(discord.ui.View):
     def __init__(self):
