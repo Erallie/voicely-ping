@@ -424,7 +424,7 @@ async def ping(ctx: commands.Context):
 
 @ping.command()
 async def add(ctx: commands.Context):
-    """Add a voice channel for you to be notified for."""
+    """Add a voice channel for you to be notified in dm\'s for."""
 
     embed = discord.Embed(title="Setup new ping(s)", description='Choose from the dropdown to specify **one or more channels** to be notified in dm\'s for.')
     await ctx.send(embed=embed, view=AddPingChannelView(), reference=ctx.message, ephemeral=True)
