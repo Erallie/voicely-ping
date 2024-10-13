@@ -422,7 +422,7 @@ async def ping(ctx: commands.Context):
     if ctx.invoked_subcommand is None:
         await ctx.send(f"{ctx.invoked_subcommand} is not a valid subcommand.", reference=ctx.message, ephemeral=True)
 
-def is_in_guild(interaction: discord.Interaction) -> bool:
+def is_in_guild(interaction: discord.Interaction | commands.Context) -> bool:
     return interaction.guild is not None
 
 @ping.command()
