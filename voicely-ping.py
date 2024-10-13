@@ -98,7 +98,9 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
             channel = "the following channel"
 
         confirmation_texts: List[str] = []
-        all_links = f"You have selected the following channel{plural}:"
+        # all_links = f"You have selected the following channel{plural}:"
+        all_links = ""
+        # channel_links = ""
         for channel in self.values:
             this_text = f"- https://discord.com/channels/{interaction.guild_id}/{channel.id}"
             # print(len(this_text))
@@ -125,7 +127,7 @@ class VoiceChannelSelect(discord.ui.ChannelSelect):
 
         confirmation_embeds.append(count_embed)
         
-        await interaction.response.send_message(embeds=confirmation_embeds, view=OpenModalView(self.values, all_links), ephemeral=True)
+        await interaction.response.send_message(embeds=confirmation_embeds, view=OpenModalView(self.values, confirmation_texts), ephemeral=True)
 
 class AddPingChannelView(discord.ui.View):
     def __init__(self):
@@ -136,7 +138,7 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
     plural = ""
     channel_ref = ""
     
-    def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: str):
+    def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
         super().__init__()
         self.channels = channels
         self.links = links
@@ -239,12 +241,17 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
                 
             confirmation_embed = discord.Embed(title=f"Ping{plural} set!", description=f'You will be notified in dm\'s when **{notify_count} {people}** {verb} in {channel}:')
 
-            channel_list = discord.Embed(description=self.links)
+            channel_embeds: List[discord.Embed] = []
+            for text in self.links:
+                channel_embeds.append(discord.Embed(description=text))
+            # channel_list = discord.Embed(description=self.links)
+
+            all_embeds = [confirmation_embed] + channel_embeds
             # Respond to the user with the text they entered.
-            await interaction.response.send_message(embeds=[confirmation_embed, channel_list], ephemeral=False)
+            await interaction.response.send_message(embeds=all_embeds, ephemeral=False)
 
 class OpenModalView(discord.ui.View):
-    def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: str):
+    def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
         super().__init__()
         self.channels = channels
         self.links = links
