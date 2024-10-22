@@ -248,7 +248,7 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
 
             all_embeds = [confirmation_embed] + channel_embeds
             # Respond to the user with the text they entered.
-            await interaction.response.send_message(embeds=all_embeds, ephemeral=False)
+            await interaction.response.send_message(embeds=all_embeds, ephemeral=True)
 
 class OpenModalView(discord.ui.View):
     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
@@ -337,7 +337,7 @@ class RemovePingSelect(discord.ui.Select):
             plural = "s"
         else:
             plural = ""
-        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=False)
+        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
 
 class NavigationType(Enum):
     next = "next"
@@ -466,7 +466,7 @@ async def remove(ctx: commands.Context):
                     })
     
     if len(options) == 0:
-        await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=False)
+        await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=True)
     else:
         def sort_options(option):
             guild_name: str = option["guild_name"]
