@@ -5,6 +5,7 @@ from discord.ext import commands
 from typing import List
 import math
 from enum import Enum
+# import datetime
 
 # Load bot token from file
 with open('../token', 'r') as file:
@@ -46,6 +47,8 @@ class Bot(commands.Bot):
 bot = Bot()
 
 # region save and load settings
+
+# region pings
 # Store users who want to be notified in a dictionary {guild_id: set(user_ids)}
 # Load notify data from file (or return an empty dictionary if the file doesn't exist)
 def load_pings():
@@ -67,6 +70,32 @@ def save_pings():
     with open('pings.json', 'w') as f:
         # Write the dictionary to the JSON file
         json.dump(pings, f)
+
+# endregion
+
+# region silent hours
+
+# def load_times():
+#     try:
+#         with open('data/silent_hours.json', 'r') as f:
+#             # Load JSON data into a dictionary
+#             return json.load(f)
+#     except FileNotFoundError as error:
+#         print(f"Cannot load silent_hours.json: {error}")
+#         # If the file doesn't exist, return an empty dictionary
+#         return {}
+
+
+# # Load the data from the JSON file when the bot starts
+# silent_hours = load_times()
+
+# # Save the current notify data to a JSON file
+# def save_times():
+#     with open('data/silent_hours.json', 'w') as f:
+#         # Write the dictionary to the JSON file
+#         json.dump(silent_hours, f)
+
+# endregion
 
 # endregion
 
@@ -413,6 +442,47 @@ class RemovePingView(discord.ui.View):
         
 # endregion
 
+# region silent hours
+# class SilentHoursStart(discord.ui.View):
+#     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
+#         super().__init__()
+#         self.channels = channels
+#         self.links = links
+    
+#     @discord.ui.button(label="Continue")
+#     async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
+#         await interaction.response.send_modal(AddPingCountModal(self.channels, self.links))
+
+
+# class SilentHoursModal(discord.ui.Modal, title="Specify member count"):
+#     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
+#         super().__init__()
+    
+
+#     start_time = discord.ui.TextInput(
+#         label="Start time",
+#         placeholder="Enter a start time in ",
+#         max_length=3,
+#         style=discord.TextStyle.short
+#     )
+
+#     async def on_submit(self, interaction: discord.Interaction):
+#         # if not self.notify_count.value:
+#         #     notify_count = bot.default_settings["notify_count"]
+#         # else:
+
+#         error_message = f"`{self.notify_count.value}` is not a valid number! Only positive whole numbers are allowed."
+
+# class TimeSelect(discord.ui.Select):
+#     def __init__(self):
+#         super().__init__(placeholder="Select one or more channels", min_values=1, max_values=25)
+#         self.channel_types = [discord.ChannelType.voice]
+
+#     async def callback(self, interaction: discord.Interaction):
+#         if len(self.values) <= 0:
+#             await interaction.response.send_message(f"You must select at least one channel!", ephemeral=True)
+#             return
+
 # endregion
 
 # region Reused errors
@@ -491,6 +561,29 @@ async def remove(ctx: commands.Context):
         # view = RemovePingView(options, 0)
         
         await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
+
+# @bot.hybrid_group()
+# async def set(ctx: commands.Context):
+#     """Various personal settings."""
+
+#     if ctx.invoked_subcommand is None:
+#         await ctx.send(f"{ctx.invoked_subcommand} is not a valid subcommand.", reference=ctx.message, ephemeral=True)
+
+
+# def return_time(argument: str):
+#     try:
+#         datetime.datetime.strptime(argument, '%I:%M %p')
+#     except:
+#         return argument.lower()
+    
+# def return_weekday(argument: str):
+
+
+
+# @bot.hybrid_command()
+# async def silenthours(ctx: commands.Context):
+#     """Set the times during which you will never be notified."""
+
 
 
 # endregion
