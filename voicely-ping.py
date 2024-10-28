@@ -429,14 +429,21 @@ async def ping(ctx: commands.Context):
     if ctx.invoked_subcommand is None:
         await ctx.send(f"{ctx.invoked_subcommand} is not a valid subcommand.", reference=ctx.message, ephemeral=True)
 
-def is_in_guild(interaction: discord.Interaction | commands.Context) -> bool:
-    return interaction.guild is not None
+# def is_in_guild(interaction: discord.Interaction | commands.Context) -> bool:
+#     return interaction.guild is not None
 
 @ping.command()
-@commands.check(is_in_guild)
-@app_commands.check(is_in_guild)
 async def add(ctx: commands.Context):
     """Add a voice channel for you to be notified in dm\'s for."""
+
+    if ctx.guild is None:
+        if ctx.invoked_subcommand is not None:
+            subcommand = f" {ctx.invoked_subcommand}"
+        else:
+            subcommand = ""
+
+        await ctx.send(f"`/{ctx.command}{subcommand}` cannot be used in dm's! Please use this command in the text channel of a server.", reference=ctx.message, ephemeral=True)
+        return
 
     embed = discord.Embed(title="Setup new ping(s)", description='Choose from the dropdown to specify **one or more channels** to be notified in dm\'s for.')
     await ctx.send(embed=embed, view=AddPingChannelView(), reference=ctx.message, ephemeral=True)
