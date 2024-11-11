@@ -594,15 +594,56 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     Event triggered when a user's voice state changes.
     Checks if a user has joined a voice channel and sends a DM to users who opted in for notifications.
     """
-    # region Reset pings
-    if before.channel is not None and len(before.channel.members) == 0:
+    # region edit message
+    async def edit_message(channel_id: int, members_message: str, verb: str, guild_id_str: str, channel_id_str: str):
         for user_id_str in bot.notified_channels:
-            if before.channel.id in bot.notified_channels[user_id_str]:
-                for this_count in bot.notified_channels[user_id_str][before.channel.id]:
-                    message: discord.Message | None = bot.notified_channels[user_id_str][before.channel.id][this_count]
-                    if message is not None:
-                        await message.edit(content=message.content.replace("is currently", "was").replace("are currently", "were") + ".")
-                del bot.notified_channels[user_id_str][before.channel.id]
+                if channel_id in bot.notified_channels[user_id_str]:
+                    for this_count in bot.notified_channels[user_id_str][channel_id]:
+                        message: discord.Message | None = bot.notified_channels[user_id_str][channel_id][this_count]
+                        if message is not None:
+                            await message.edit(content=f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
+    # endregion
+    # region Reset pings
+    if before.channel is not None:
+        if len(before.channel.members) == 0:
+            for user_id_str in bot.notified_channels:
+                if before.channel.id in bot.notified_channels[user_id_str]:
+                    for this_count in bot.notified_channels[user_id_str][before.channel.id]:
+                        message: discord.Message | None = bot.notified_channels[user_id_str][before.channel.id][this_count]
+                        if message is not None:
+                            await message.edit(content=message.content.replace("is currently", "was").replace("are currently", "were") + ".")
+                    del bot.notified_channels[user_id_str][before.channel.id]
+        else:
+            # region Calculate members list
+            before_member_list = before.channel.members
+            # region ignore bots
+            for before_member_check in before_member_list:
+                if before_member_check.bot:
+                    before_member_list.remove(before_member_check)
+            # endregion
+            before_count = len(before_member_list)
+            before_channel_id = before.channel.id
+            if before_count <= 5:
+                before_members_message = ""
+                for x in range(before_count):
+                    if before_count == 1:
+                        before_members_message += f"<@{before_member_list[x].id}>"
+                    elif x == 0 and before_count == 2:
+                        before_members_message += f"<@{before_member_list[x].id}> "
+                    elif x < before_count - 1:
+                        before_members_message += f"<@{before_member_list[x].id}>, "
+                    else:
+                        before_members_message += f"and <@{before_member_list[x].id}>"
+            else:
+                before_members_message = f"**{before_count}** members"
+            
+            if before_count == 1:
+                before_verb = "is"
+            else:
+                before_verb = "are"
+            # endregion
+            await edit_message(before_channel_id, before_members_message, before_verb, str(before.channel.guild.id), str(before_channel_id))
+
     # endregion
     # region Ping
     if after.channel is not None:
@@ -617,11 +658,42 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         guild_id_str = str(after.channel.guild.id)
         channel_id = after.channel.id
         channel_id_str = str(channel_id)
+        # region Make Message
+        if count <= 5:
+            members_message = ""
+            for x in range(count):
+                if count == 1:
+                    members_message += f"<@{member_list[x].id}>"
+                elif x == 0 and count == 2:
+                    members_message += f"<@{member_list[x].id}> "
+                elif x < count - 1:
+                    members_message += f"<@{member_list[x].id}>, "
+                else:
+                    members_message += f"and <@{member_list[x].id}>"
+        else:
+            members_message = f"**{count_str}** members"
+
+        if count == 1:
+            verb = "is"
+        else:
+            verb = "are"
+        # endregion
         if guild_id_str in pings and channel_id_str in pings[guild_id_str] and count_str in pings[guild_id_str][channel_id_str]:
             for pinged_id_str in pings[guild_id_str][channel_id_str][count_str]:
+                pinged_user = bot.get_user(int(pinged_id_str))
                 if pinged_id_str in bot.notified_channels:
-                    if channel_id in bot.notified_channels[pinged_id_str] and count in bot.notified_channels[pinged_id_str][channel_id]:
+                    if channel_id in bot.notified_channels[pinged_id_str]:
+                        if count in bot.notified_channels[pinged_id_str][channel_id]:
+                            await edit_message(channel_id, members_message, verb, guild_id_str, channel_id_str)
                             continue
+                        elif pinged_user not in member_list:
+                            for this_count in bot.notified_channels[pinged_id_str][channel_id]:
+                                to_delete: discord.Message | None = bot.notified_channels[pinged_id_str][channel_id][this_count]
+                                if to_delete is not None:
+                                    await to_delete.delete()
+                                    bot.notified_channels[pinged_id_str][channel_id][this_count] = None
+                        else:
+                            await edit_message(channel_id, members_message, verb, guild_id_str, channel_id_str)
                 else:
                     bot.notified_channels[pinged_id_str] = {}
 
@@ -629,30 +701,8 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     bot.notified_channels[pinged_id_str][channel_id] = {}
                     
                 bot.notified_channels[pinged_id_str][channel_id][count] = None
-
-                pinged_user = bot.get_user(int(pinged_id_str))
-                
                 if pinged_user in member_list:
                     continue
-                
-                if count <= 5:
-                    members_message = ""
-                    for x in range(count):
-                        if count == 1:
-                            members_message += f"<@{member_list[x].id}>"
-                        elif x == 0 and count == 2:
-                            members_message += f"<@{member_list[x].id}> "
-                        elif x < count - 1:
-                            members_message += f"<@{member_list[x].id}>, "
-                        else:
-                            members_message += f"and <@{member_list[x].id}>"
-                else:
-                    members_message = f"**{count_str}** members"
-
-                if count == 1:
-                    verb = "is"
-                else:
-                    verb = "are"
                 
                 try:
                     message = await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
@@ -661,6 +711,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                 
                 else:
                     bot.notified_channels[pinged_id_str][channel_id][count] = message
+        else:
+            await edit_message(channel_id, members_message, verb, guild_id_str, channel_id_str)
+            
     # endregion
 
 
