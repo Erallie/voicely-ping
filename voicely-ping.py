@@ -700,9 +700,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                 if channel_id not in bot.notified_channels[pinged_id_str]:
                     bot.notified_channels[pinged_id_str][channel_id] = {}
                     
-                bot.notified_channels[pinged_id_str][channel_id][count] = None
                 if pinged_user in member_list:
                     continue
+                bot.notified_channels[pinged_id_str][channel_id][count] = None
                 
                 try:
                     message = await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
