@@ -9,6 +9,8 @@ There are two commands:
 This command brings you through a form that allows you to set up pings for multiple channels.
 ### `/ping remove`
 This command generates dropdowns that allow you to remove pings you have already set.
+### `/visible`
+This command is available to **server admin** and sets whether commands return a response that is visible to other server members.
 ## How Pings Work
 When the number of people you specified are in one of the voice channels you specified, you will receive a **direct message** telling you who or how many people *(if more than five)* are in the voice channel.
 
