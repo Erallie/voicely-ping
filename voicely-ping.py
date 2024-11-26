@@ -23,7 +23,8 @@ class Bot(commands.Bot):
         super().__init__(command_prefix="$", intents=intents)
         self.default_settings = {
             "notify_count": 3,
-            "reset_count": 0
+            "reset_count": 0,
+            "ephemeral": "true"
         }
         self.notified_channels = {}
         # This dictionary will look like this:
@@ -73,6 +74,31 @@ def save_pings():
 
 # endregion
 
+# region server settings
+# Store users who want to be notified in a dictionary {guild_id: set(user_ids)}
+# Load notify data from file (or return an empty dictionary if the file doesn't exist)
+def load_server_settings():
+    try:
+        with open('server_settings.json', 'r') as f:
+            # Load JSON data into a dictionary
+            return json.load(f)
+    except FileNotFoundError as error:
+        print(f"Cannot load server_settings.json: {error}")
+        # If the file doesn't exist, return an empty dictionary
+        return {}
+
+
+# Load the data from the JSON file when the bot starts
+server_settings = load_server_settings()
+
+# Save the current notify data to a JSON file
+def save_server_settings():
+    with open('server_settings.json', 'w') as f:
+        # Write the dictionary to the JSON file
+        json.dump(server_settings, f)
+
+# endregion
+
 # region silent hours
 
 # def load_times():
@@ -98,6 +124,23 @@ def save_pings():
 # endregion
 
 # endregion
+
+# region get ephemeral
+def return_bool(value: str):
+    if value.lower() in ['true', '1', 'yes', 'y']:
+        return True
+    elif value.lower() in ['false', '0', 'no', 'n']:
+        return False
+    else:
+        raise ValueError("Invalid input for boolean conversion.")
+
+def get_ephemeral(guild_id_str: str):
+    if guild_id_str in server_settings and "ephemeral" in server_settings[guild_id_str]:
+        return return_bool(server_settings[guild_id_str]["ephemeral"])
+    else:
+        return return_bool(bot.default_settings["ephemeral"])
+# endregion
+
 
 @bot.event
 async def on_ready():
@@ -493,6 +536,9 @@ def get_error(action: str, error = None):
 # endregion
 
 # region commands
+def return_stripped(argument: str):
+    return argument.strip().lower()
+
 @bot.hybrid_group()
 async def ping(ctx: commands.Context):
     """Add or remove a ping."""
@@ -561,6 +607,41 @@ async def remove(ctx: commands.Context):
         # view = RemovePingView(options, 0)
         
         await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
+
+@bot.hybrid_command()
+@app_commands.describe(value="Type 'true' to make responses visible, 'false' to make them invisible, or 'reset' to set to default.")
+async def visible(ctx: commands.Context, value: return_stripped):
+    """Set whether commands return a response that is visible to other server members."""
+
+    guild_id_str = str(ctx.guild.id)
+
+    if value is None or value == "":
+        await ctx.send("`value` must be either `true`, `false`, or `reset`.\n\nType `true` to make responses visible, `false` to make them invisible, or `reset` to set to default.")
+        return
+    elif value == "true" or value == "false":
+        if guild_id_str not in server_settings:
+            server_settings[guild_id_str] = {}
+        server_settings[guild_id_str]["ephemeral"] = value
+
+        save_server_settings()
+
+        if value == "true":
+            string = "visible"
+        elif value == "false":
+            string = "invisible"
+
+        await ctx.send(f"Command responses have been made **{string}** to all server members.\n\nThis will only affect the **final confirmations** of the `ping add` and `ping remove` commands.", reference=ctx.message, ephemeral=True)
+    elif value == "reset":
+        if guild_id_str in server_settings and "ephemeral" in server_settings[guild_id_str]:
+            del server_settings[guild_id_str]["ephemeral"]
+        
+        if len(server_settings[guild_id_str]) == 0:
+            del server_settings[guild_id_str]
+
+        save_server_settings()
+
+        await ctx.send(f"The visibility of command responses has been **reset** to the bot's default: `{bot.default_settings["ephemeral"]}`", reference=ctx.message, ephemeral=True)
+
 
 # @bot.hybrid_group()
 # async def set(ctx: commands.Context):
