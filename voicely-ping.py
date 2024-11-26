@@ -127,18 +127,18 @@ def save_server_settings():
 
 # region get ephemeral
 def return_bool(value: str):
-    if value.lower() in ['true', '1', 'yes', 'y']:
+    if value.strip().lower() in ['true', '1', 'yes', 'y']:
         return True
-    elif value.lower() in ['false', '0', 'no', 'n']:
+    elif value.strip().lower() in ['false', '0', 'no', 'n']:
         return False
     else:
         raise ValueError("Invalid input for boolean conversion.")
 
 def get_ephemeral(guild_id_str: str):
     if guild_id_str in server_settings and "ephemeral" in server_settings[guild_id_str]:
-        return return_bool(server_settings[guild_id_str]["ephemeral"])
+        return not return_bool(server_settings[guild_id_str]["ephemeral"])
     else:
-        return return_bool(bot.default_settings["ephemeral"])
+        return not return_bool(bot.default_settings["ephemeral"])
 # endregion
 
 
@@ -320,7 +320,7 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
 
             all_embeds = [confirmation_embed] + channel_embeds
             # Respond to the user with the text they entered.
-            await interaction.response.send_message(embeds=all_embeds, ephemeral=True)
+            await interaction.response.send_message(embeds=all_embeds, ephemeral=get_ephemeral(guild_id))
 
 class OpenModalView(discord.ui.View):
     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
@@ -409,7 +409,7 @@ class RemovePingSelect(discord.ui.Select):
             plural = "s"
         else:
             plural = ""
-        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=True)
+        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=get_ephemeral(str(interaction.guild.id)))
 
 class NavigationType(Enum):
     next = "next"
@@ -616,7 +616,7 @@ async def visible(ctx: commands.Context, value: return_stripped):
     guild_id_str = str(ctx.guild.id)
 
     if value is None or value == "":
-        await ctx.send("`value` must be either `true`, `false`, or `reset`.\n\nType `true` to make responses visible, `false` to make them invisible, or `reset` to set to default.")
+        await ctx.send("`value` must be either `true`, `false`, or `reset`.\n\nType `true` to make responses visible, `false` to make them invisible, or `reset` to set to default.", reference=ctx.message, ephemeral=True)
         return
     elif value == "true" or value == "false":
         if guild_id_str not in server_settings:
