@@ -609,6 +609,7 @@ async def remove(ctx: commands.Context):
         await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
 
 @bot.hybrid_command()
+@commands.has_permissions(administrator=True)
 @app_commands.describe(value="Type 'true' to make responses visible, 'false' to make them invisible, or 'reset' to set to default.")
 async def visible(ctx: commands.Context, value: return_stripped):
     """Set whether commands return a response that is visible to other server members."""
