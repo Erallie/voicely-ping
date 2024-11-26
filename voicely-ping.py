@@ -54,7 +54,7 @@ bot = Bot()
 # Load notify data from file (or return an empty dictionary if the file doesn't exist)
 def load_pings():
     try:
-        with open('pings.json', 'r') as f:
+        with open('data/pings.json', 'r') as f:
             # Load JSON data into a dictionary
             return json.load(f)
     except FileNotFoundError as error:
@@ -68,7 +68,7 @@ pings = load_pings()
 
 # Save the current notify data to a JSON file
 def save_pings():
-    with open('pings.json', 'w') as f:
+    with open('data/pings.json', 'w') as f:
         # Write the dictionary to the JSON file
         json.dump(pings, f)
 
@@ -79,7 +79,7 @@ def save_pings():
 # Load notify data from file (or return an empty dictionary if the file doesn't exist)
 def load_server_settings():
     try:
-        with open('server_settings.json', 'r') as f:
+        with open('data/server_settings.json', 'r') as f:
             # Load JSON data into a dictionary
             return json.load(f)
     except FileNotFoundError as error:
@@ -93,7 +93,7 @@ server_settings = load_server_settings()
 
 # Save the current notify data to a JSON file
 def save_server_settings():
-    with open('server_settings.json', 'w') as f:
+    with open('data/server_settings.json', 'w') as f:
         # Write the dictionary to the JSON file
         json.dump(server_settings, f)
 
