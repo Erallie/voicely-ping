@@ -640,7 +640,7 @@ async def visible(ctx: commands.Context, value: return_stripped):
 
         save_server_settings()
 
-        await ctx.send(f"The visibility of command responses has been **reset** to the bot's default: `{bot.default_settings["ephemeral"]}`", reference=ctx.message, ephemeral=True)
+        await ctx.send(f"The visibility of command responses has been **reset** to the bot's default: `{bot.default_settings['ephemeral']}`", reference=ctx.message, ephemeral=True)
 
 
 # @bot.hybrid_group()
