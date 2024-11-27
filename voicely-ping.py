@@ -251,7 +251,7 @@ class AddPingCountModal(discord.ui.Modal, title="Specify member count"):
             
             notify_str = str(notify_count)
             
-            guild_id = str(interaction.guild.id)
+            guild_id = str(interaction.guild_id)
             user_id = str(interaction.user.id)
             # Add the user to the notification set for the guild
             if guild_id not in pings:
@@ -410,7 +410,7 @@ class RemovePingSelect(discord.ui.Select):
             plural = "s"
         else:
             plural = ""
-        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=get_ephemeral(str(interaction.guild.id)))
+        await interaction.response.send_message(f"Successfully removed **{len(self.values)} ping{plural}**.", ephemeral=get_ephemeral(str(interaction.guild_id)))
 
 class NavigationType(Enum):
     next = "next"
