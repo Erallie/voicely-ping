@@ -679,12 +679,12 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     """
     # region edit message
     async def edit_message(channel_id: int, members_message: str, verb: str, guild_id_str: str, channel_id_str: str):
-        for user_id_str in bot.notified_channels:
-                if channel_id in bot.notified_channels[user_id_str]:
-                    for this_count in bot.notified_channels[user_id_str][channel_id]:
-                        message: discord.Message | None = bot.notified_channels[user_id_str][channel_id][this_count]
-                        if message is not None:
-                            await message.edit(content=f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
+        for user_id_str in bot.notified_channels: #If this user has been notified
+            if channel_id in bot.notified_channels[user_id_str]: #If they have been notified for this channel
+                for this_count in bot.notified_channels[user_id_str][channel_id]: #For each count they've been notified for
+                    message: discord.Message | None = bot.notified_channels[user_id_str][channel_id][this_count] #Get the previously sent notification
+                    if message is not None:
+                        await message.edit(content=f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
     # endregion
     # region Reset pings
     if before.channel is not None:
