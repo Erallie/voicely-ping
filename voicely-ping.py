@@ -688,15 +688,15 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
     # endregion
     # region Reset pings
     if before.channel is not None:
-        if len(before.channel.members) == 0:
-            for user_id_str in bot.notified_channels:
-                if before.channel.id in bot.notified_channels[user_id_str]:
+        if len(before.channel.members) == 0: #If everyone has left the voice channel
+            for user_id_str in bot.notified_channels: #For each person who has been notified
+                if before.channel.id in bot.notified_channels[user_id_str]: #If this person has been notified for this channel
                     for this_count in bot.notified_channels[user_id_str][before.channel.id]:
-                        message: discord.Message | None = bot.notified_channels[user_id_str][before.channel.id][this_count]
-                        if message is not None:
+                        message: discord.Message | None = bot.notified_channels[user_id_str][before.channel.id][this_count] #Get previously sent message
+                        if message is not None: #If message exists
                             await message.edit(content=message.content.replace("is currently", "was").replace("are currently", "were") + f".\n-# Last member left at <t:{str(datetime.datetime.now().timestamp())[:10]}:t>.")
-                    del bot.notified_channels[user_id_str][before.channel.id]
-        else:
+                    del bot.notified_channels[user_id_str][before.channel.id] #Remove channel from list, because everyone has left.
+        else: #Otherwise, just update the message for everyone who was notified
             # region Calculate members list
             before_member_list = before.channel.members
             # region ignore bots
@@ -709,20 +709,20 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             if before_count <= 5:
                 before_members_message = ""
                 for x in range(before_count):
-                    if before_count == 1:
+                    if before_count == 1: #If there is only one user
                         before_members_message += f"<@{before_member_list[x].id}>"
-                    elif x == 0 and before_count == 2:
+                    elif x == 0 and before_count == 2: #If there are two users, but we're referencing the first user
                         before_members_message += f"<@{before_member_list[x].id}> "
-                    elif x < before_count - 1:
+                    elif x < before_count - 1: #If it's not the last user we're referencing
                         before_members_message += f"<@{before_member_list[x].id}>, "
-                    else:
+                    else: #If this is the last user we're referencing
                         before_members_message += f"and <@{before_member_list[x].id}>"
-            else:
+            else: #If there are more than five members in the channel
                 before_members_message = f"**{before_count}** members"
             
-            if before_count == 1:
+            if before_count == 1: #If there is one member in the channel
                 before_verb = "is"
-            else:
+            else: #If there is more than one member in the channel
                 before_verb = "are"
             # endregion
             await edit_message(before_channel_id, before_members_message, before_verb, str(before.channel.guild.id), str(before_channel_id))
@@ -745,45 +745,45 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         if count <= 5:
             members_message = ""
             for x in range(count):
-                if count == 1:
+                if count == 1: #If there is only one user
                     members_message += f"<@{member_list[x].id}>"
-                elif x == 0 and count == 2:
+                elif x == 0 and count == 2: #If there are two users, but we're referencing the first user
                     members_message += f"<@{member_list[x].id}> "
-                elif x < count - 1:
+                elif x < count - 1: #If it's not the last user we're referencing
                     members_message += f"<@{member_list[x].id}>, "
-                else:
+                else: #If this is the last user we're referencing
                     members_message += f"and <@{member_list[x].id}>"
-        else:
+        else: #If there are more than five members in the channel
             members_message = f"**{count_str}** members"
 
-        if count == 1:
+        if count == 1: #If there is one member in the channel
             verb = "is"
-        else:
+        else: #If there is more than one member in the channel
             verb = "are"
         # endregion
-        if guild_id_str in pings and channel_id_str in pings[guild_id_str] and count_str in pings[guild_id_str][channel_id_str]:
-            for pinged_id_str in pings[guild_id_str][channel_id_str][count_str]:
+        if guild_id_str in pings and channel_id_str in pings[guild_id_str] and count_str in pings[guild_id_str][channel_id_str]: #If people have signed up to be pinged for this count in this channel and guild
+            for pinged_id_str in pings[guild_id_str][channel_id_str][count_str]: #For each user that wants to be pinged for this count
                 pinged_user = bot.get_user(int(pinged_id_str))
-                if pinged_id_str in bot.notified_channels:
-                    if channel_id in bot.notified_channels[pinged_id_str]:
-                        if count in bot.notified_channels[pinged_id_str][channel_id]:
+                if pinged_id_str in bot.notified_channels: #If this user already has been pinged, and that has already been recorded
+                    if channel_id in bot.notified_channels[pinged_id_str]: #if they were already pinged for this channel
+                        if count in bot.notified_channels[pinged_id_str][channel_id]: #if they were already pinged for this count
                             await edit_message(channel_id, members_message, verb, guild_id_str, channel_id_str)
                             continue
-                        elif pinged_user not in member_list:
+                        elif pinged_user not in member_list: #If they were not yet pinged for this count, and they're also not in the channel
                             for this_count in bot.notified_channels[pinged_id_str][channel_id]:
                                 to_delete: discord.Message | None = bot.notified_channels[pinged_id_str][channel_id][this_count]
                                 if to_delete is not None:
-                                    await to_delete.delete()
+                                    await to_delete.delete() #Delete the message, then continue to send the next one after this if statement
                                     bot.notified_channels[pinged_id_str][channel_id][this_count] = None
-                        else:
+                        else: #If they were not pinged for this count, but they're in the voice channel
                             await edit_message(channel_id, members_message, verb, guild_id_str, channel_id_str)
-                else:
-                    bot.notified_channels[pinged_id_str] = {}
+                else: #If it's not recorded that this user has been pinged
+                    bot.notified_channels[pinged_id_str] = {} #Add a dictionary for this user containing channel id's
 
                 if channel_id not in bot.notified_channels[pinged_id_str]:
                     bot.notified_channels[pinged_id_str][channel_id] = {}
                     
-                if pinged_user in member_list:
+                if pinged_user in member_list: #If this user is in the voice channel
                     continue
                 bot.notified_channels[pinged_id_str][channel_id][count] = None
                 
