@@ -632,7 +632,7 @@ async def visible(ctx: commands.Context, value: return_stripped):
         elif value == "false":
             string = "invisible"
 
-        await ctx.send(f"Command responses have been made **{string}** to all server members.\n\nThis will only affect the **final confirmations** of the `ping add` and `ping remove` commands.", reference=ctx.message, ephemeral=True)
+        await ctx.send(f"Command responses have been made **{string}** to all server members.\n\nThis will only affect the **final confirmations** of the `/ping add` and `/ping remove` commands.", reference=ctx.message, ephemeral=True)
     elif value == "reset":
         if guild_id_str in server_settings and "ephemeral" in server_settings[guild_id_str]:
             del server_settings[guild_id_str]["ephemeral"]
