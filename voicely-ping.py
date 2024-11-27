@@ -5,6 +5,7 @@ from discord.ext import commands
 from typing import List
 import math
 from enum import Enum
+import datetime
 # import datetime
 
 # Load bot token from file
@@ -693,7 +694,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     for this_count in bot.notified_channels[user_id_str][before.channel.id]:
                         message: discord.Message | None = bot.notified_channels[user_id_str][before.channel.id][this_count]
                         if message is not None:
-                            await message.edit(content=message.content.replace("is currently", "was").replace("are currently", "were") + ".")
+                            await message.edit(content=message.content.replace("is currently", "was").replace("are currently", "were") + f".\n-# Last member left at <t:{str(datetime.datetime.now().timestamp())[:10]}:t>.")
                     del bot.notified_channels[user_id_str][before.channel.id]
         else:
             # region Calculate members list
