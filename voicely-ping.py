@@ -686,6 +686,23 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     if message is not None:
                         await message.edit(content=f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
     # endregion
+    # region set member message
+    def make_member_list(count: int, member_list: List[discord.Member]):
+        if count <= 5:
+            final_message = ""
+            for x in range(count):
+                if count == 1: #If there is only one user
+                    final_message += f"<@{member_list[x].id}>"
+                elif x == 0 and count == 2: #If there are two users, but we're referencing the first user
+                    final_message += f"<@{member_list[x].id}> "
+                elif x < count - 1: #If it's not the last user we're referencing
+                    final_message += f"<@{member_list[x].id}>, "
+                else: #If this is the last user we're referencing
+                    final_message += f"and <@{member_list[x].id}>"
+        else: #If there are more than five members in the channel
+            final_message = f"**{count}** members"
+        return final_message
+    # endregion
     # region Reset pings
     if before.channel is not None:
         if len(before.channel.members) == 0: #If everyone has left the voice channel
@@ -706,26 +723,13 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
             # endregion
             before_count = len(before_member_list)
             before_channel_id = before.channel.id
-            if before_count <= 5:
-                before_members_message = ""
-                for x in range(before_count):
-                    if before_count == 1: #If there is only one user
-                        before_members_message += f"<@{before_member_list[x].id}>"
-                    elif x == 0 and before_count == 2: #If there are two users, but we're referencing the first user
-                        before_members_message += f"<@{before_member_list[x].id}> "
-                    elif x < before_count - 1: #If it's not the last user we're referencing
-                        before_members_message += f"<@{before_member_list[x].id}>, "
-                    else: #If this is the last user we're referencing
-                        before_members_message += f"and <@{before_member_list[x].id}>"
-            else: #If there are more than five members in the channel
-                before_members_message = f"**{before_count}** members"
             
             if before_count == 1: #If there is one member in the channel
                 before_verb = "is"
             else: #If there is more than one member in the channel
                 before_verb = "are"
             # endregion
-            await edit_message(before_channel_id, before_members_message, before_verb, str(before.channel.guild.id), str(before_channel_id))
+            await edit_message(before_channel_id, make_member_list(before_count, before_member_list), before_verb, str(before.channel.guild.id), str(before_channel_id))
 
     # endregion
     # region Ping
@@ -742,19 +746,7 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         channel_id = after.channel.id
         channel_id_str = str(channel_id)
         # region Make Message
-        if count <= 5:
-            members_message = ""
-            for x in range(count):
-                if count == 1: #If there is only one user
-                    members_message += f"<@{member_list[x].id}>"
-                elif x == 0 and count == 2: #If there are two users, but we're referencing the first user
-                    members_message += f"<@{member_list[x].id}> "
-                elif x < count - 1: #If it's not the last user we're referencing
-                    members_message += f"<@{member_list[x].id}>, "
-                else: #If this is the last user we're referencing
-                    members_message += f"and <@{member_list[x].id}>"
-        else: #If there are more than five members in the channel
-            members_message = f"**{count_str}** members"
+        members_message = make_member_list(count, member_list)
 
         if count == 1: #If there is one member in the channel
             verb = "is"
