@@ -6,11 +6,8 @@ from typing import List
 import math
 from enum import Enum
 import datetime
+import sys
 # import datetime
-
-# Load bot token from file
-with open('../token', 'r') as file:
-    bot_token = file.read().strip()
 
 # Define intents
 intents = discord.Intents.default()
@@ -823,6 +820,20 @@ async def sync(ctx: commands.Context, guild: discord.Guild = None):
             command_list += f"\n- `/{command.name}`"
         await ctx.send(f"Commands synced globally:{command_list}\nPlease note it may take up to an hour to propagate globally.", reference=ctx.message, ephemeral=True)
 
+# Check token
+def get_token() -> str:
+    try:
+        with open('./token', 'r') as file:
+            token = file.read().strip()
+            if not token:
+                raise ValueError("The token file is empty. Make sure to put the token inside the token file.")
+                sys.exit(1)
+            return token
+    except FileNotFoundError as e:
+        raise FileNotFoundError("The token file wasn't found.") from e
+        sys.exit(1)
+    except Exception as e:
+        raise RuntimeError(f"An unexpected error occurred: {e}") from e
 
 # Run the bot with the loaded token
-bot.run(bot_token)
+bot.run(get_token())
