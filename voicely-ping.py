@@ -536,6 +536,15 @@ def get_error(action: str, error = None):
     return f"I encountered an error while trying to {action}."
 # endregion
 
+async def send_dm_error(ctx: commands.Context):
+    if ctx.invoked_subcommand is not None:
+        subcommand = f" {ctx.invoked_subcommand}"
+    else:
+        subcommand = ""
+
+    await ctx.send(f"`/{ctx.command}{subcommand}` cannot be used in dm's! Please use this command in the text channel of a server.", reference=ctx.message, ephemeral=True)
+
+
 # region commands
 def return_stripped(argument: str):
     return argument.strip().lower()
@@ -554,12 +563,7 @@ async def add(ctx: commands.Context):
     """Add a voice channel for you to be notified in dm\'s for."""
 
     if ctx.guild is None:
-        if ctx.invoked_subcommand is not None:
-            subcommand = f" {ctx.invoked_subcommand}"
-        else:
-            subcommand = ""
-
-        await ctx.send(f"`/{ctx.command}{subcommand}` cannot be used in dm's! Please use this command in the text channel of a server.", reference=ctx.message, ephemeral=True)
+        await send_dm_error(ctx)
         return
 
     embed = discord.Embed(title="Setup new ping(s)", description='Choose from the dropdown to specify **one or more channels** to be notified in dm\'s for.')
@@ -614,6 +618,10 @@ async def remove(ctx: commands.Context):
 @app_commands.describe(value="Type 'true' to make responses visible, 'false' to make them invisible, or 'reset' to set to default.")
 async def visible(ctx: commands.Context, value: return_stripped):
     """Set whether commands return a response that is visible to other server members."""
+
+    if ctx.guild is None:
+        await send_dm_error(ctx)
+        return
 
     guild_id_str = str(ctx.guild.id)
 
