@@ -844,11 +844,9 @@ def get_token() -> str:
             token = file.read().strip()
             if not token:
                 raise ValueError("The token file is empty. Make sure to put the token inside the token file.")
-                sys.exit(1)
             return token
     except FileNotFoundError as e:
         raise FileNotFoundError("The token file wasn't found.") from e
-        sys.exit(1)
     except Exception as e:
         raise RuntimeError(f"An unexpected error occurred: {e}") from e
 
