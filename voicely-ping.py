@@ -536,14 +536,20 @@ def get_error(action: str, error = None):
     return f"I encountered an error while trying to {action}."
 # endregion
 
-async def send_dm_error(ctx: commands.Context):
+def return_full_command(ctx: commands.Context):
     if ctx.invoked_subcommand is not None:
         subcommand = f" {ctx.invoked_subcommand}"
     else:
         subcommand = ""
 
-    await ctx.send(f"`/{ctx.command}{subcommand}` cannot be used in dm's! Please use this command in the text channel of a server.", reference=ctx.message, ephemeral=True)
+    return f"`/{ctx.command}{subcommand}`"
 
+
+async def send_dm_error(ctx: commands.Context):
+    await ctx.send(f"{return_full_command(ctx)} cannot be used in dm's! Please use this command in the text channel of a server.", reference=ctx.message, ephemeral=True)
+
+async def send_admin_error(ctx: commands.Context):
+    await ctx.send(f"{return_full_command(ctx)} can only be used by server administrators.", reference=ctx.message, ephemeral=True)
 
 # region commands
 def return_stripped(argument: str):
@@ -614,13 +620,16 @@ async def remove(ctx: commands.Context):
         await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
 
 @bot.hybrid_command()
-@commands.has_permissions(administrator=True)
 @app_commands.describe(value="Type 'true' to make responses visible, 'false' to make them invisible, or 'reset' to set to default.")
 async def visible(ctx: commands.Context, value: return_stripped):
     """Set whether commands return a response that is visible to other server members."""
 
     if ctx.guild is None:
         await send_dm_error(ctx)
+        return
+
+    if not ctx.channel.permissions_for(ctx.author).administrator:
+        await send_admin_error(ctx)
         return
 
     guild_id_str = str(ctx.guild.id)
