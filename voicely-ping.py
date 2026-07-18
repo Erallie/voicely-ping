@@ -6,7 +6,6 @@ from typing import List
 import math
 from enum import Enum
 import datetime
-import sys
 import os
 import uuid
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
@@ -130,19 +129,6 @@ WEEKDAY_NAMES = [
     "sunday"
 ]
 
-WEEKDAY_ALIASES = {
-    "mon": "monday",
-    "tue": "tuesday",
-    "tues": "tuesday",
-    "wed": "wednesday",
-    "thu": "thursday",
-    "thur": "thursday",
-    "thurs": "thursday",
-    "fri": "friday",
-    "sat": "saturday",
-    "sun": "sunday"
-}
-
 
 def parse_time(value: str) -> datetime.time:
     cleaned = value.strip().upper().replace('.', '')
@@ -155,32 +141,6 @@ def parse_time(value: str) -> datetime.time:
             pass
 
     raise ValueError("Use a time such as `10:30 PM`, `7 AM`, or `22:30`.")
-
-
-def parse_days(value: str) -> List[int]:
-    cleaned = value.strip().lower()
-
-    if cleaned in ["daily", "every day", "everyday", "all"]:
-        return list(range(7))
-    if cleaned in ["weekday", "weekdays"]:
-        return list(range(5))
-    if cleaned in ["weekend", "weekends"]:
-        return [5, 6]
-
-    day_numbers = []
-    for item in cleaned.split(','):
-        day_name = item.strip()
-        day_name = WEEKDAY_ALIASES.get(day_name, day_name)
-        if day_name not in WEEKDAY_NAMES:
-            raise ValueError(f"`{item.strip()}` is not a valid day.")
-        day_number = WEEKDAY_NAMES.index(day_name)
-        if day_number not in day_numbers:
-            day_numbers.append(day_number)
-
-    if len(day_numbers) == 0:
-        raise ValueError("Specify at least one day.")
-
-    return sorted(day_numbers)
 
 
 def format_days(days: List[int]) -> str:
@@ -600,10 +560,10 @@ class RemovePingView(discord.ui.View):
 # endregion
 
 # region Reused errors
-def get_error(action: str, error = None):
-    if error:
-        return f"I could not {action}: {error}"
-    return f"I encountered an error while trying to {action}."
+# def get_error(action: str, error = None):
+#     if error:
+#         return f"I could not {action}: {error}"
+#     return f"I encountered an error while trying to {action}."
 # endregion
 
 def return_full_command(ctx: commands.Context):
@@ -635,15 +595,16 @@ TIMEZONE_REGIONS = [
     "Pacific"
 ]
 
-ALL_TIMEZONES = sorted(
-    timezone
-    for timezone in available_timezones()
-    if timezone == "UTC"
-    or any(
-        timezone.startswith(f"{region}/")
-        for region in TIMEZONE_REGIONS
+def get_timezones_for_region(region: str) -> List[str]:
+    return sorted(
+        timezone
+        for timezone in available_timezones()
+        if timezone.startswith(f"{region}/")
     )
-)
+
+
+def timezone_display_name(timezone: str) -> str:
+    return timezone.split("/", 1)[1].replace("_", " ")
 
 class SilentDaySelect(discord.ui.Select):
     def __init__(self):
