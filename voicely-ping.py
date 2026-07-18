@@ -1055,8 +1055,6 @@ class SilentSetupView(discord.ui.View):
             description=(
                 "1. Select one or more days.\n"
                 "2. Press **Enter times**.\n\n"
-                f"Your current timezone is **{self.timezone}**.\n"
-                "To change it, run `/silenthours timezone`."
             )
         )
 
@@ -1068,7 +1066,8 @@ class SilentSetupView(discord.ui.View):
 
         embed.add_field(
             name="Timezone",
-            value=self.timezone,
+            value=f"Your current timezone is **{self.timezone}**.\n"
+                "To change it, run `/silenthours timezone`.",
             inline=False
         )
 
