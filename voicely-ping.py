@@ -7,6 +7,9 @@ import math
 from enum import Enum
 import datetime
 import sys
+import os
+import uuid
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 # import datetime
 
 # Define intents
@@ -99,25 +102,138 @@ def save_server_settings():
 
 # region silent hours
 
-# def load_times():
-#     try:
-#         with open('data/silent_hours.json', 'r') as f:
-#             # Load JSON data into a dictionary
-#             return json.load(f)
-#     except FileNotFoundError as error:
-#         print(f"Cannot load silent_hours.json: {error}")
-#         # If the file doesn't exist, return an empty dictionary
-#         return {}
+def load_silent_settings():
+    try:
+        with open('data/silent_hours.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError as error:
+        print(f"Cannot load silent_hours.json: {error}")
+        return {}
 
 
-# # Load the data from the JSON file when the bot starts
-# silent_hours = load_times()
+silent_settings = load_silent_settings()
 
-# # Save the current notify data to a JSON file
-# def save_times():
-#     with open('data/silent_hours.json', 'w') as f:
-#         # Write the dictionary to the JSON file
-#         json.dump(silent_hours, f)
+
+def save_silent_settings():
+    os.makedirs('data', exist_ok=True)
+    with open('data/silent_hours.json', 'w') as f:
+        json.dump(silent_settings, f, indent=4)
+
+
+WEEKDAY_NAMES = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday"
+]
+
+WEEKDAY_ALIASES = {
+    "mon": "monday",
+    "tue": "tuesday",
+    "tues": "tuesday",
+    "wed": "wednesday",
+    "thu": "thursday",
+    "thur": "thursday",
+    "thurs": "thursday",
+    "fri": "friday",
+    "sat": "saturday",
+    "sun": "sunday"
+}
+
+
+def parse_time(value: str) -> datetime.time:
+    cleaned = value.strip().upper().replace('.', '')
+    formats = ["%I:%M %p", "%I %p", "%H:%M"]
+
+    for time_format in formats:
+        try:
+            return datetime.datetime.strptime(cleaned, time_format).time()
+        except ValueError:
+            pass
+
+    raise ValueError("Use a time such as `10:30 PM`, `7 AM`, or `22:30`.")
+
+
+def parse_days(value: str) -> List[int]:
+    cleaned = value.strip().lower()
+
+    if cleaned in ["daily", "every day", "everyday", "all"]:
+        return list(range(7))
+    if cleaned in ["weekday", "weekdays"]:
+        return list(range(5))
+    if cleaned in ["weekend", "weekends"]:
+        return [5, 6]
+
+    day_numbers = []
+    for item in cleaned.split(','):
+        day_name = item.strip()
+        day_name = WEEKDAY_ALIASES.get(day_name, day_name)
+        if day_name not in WEEKDAY_NAMES:
+            raise ValueError(f"`{item.strip()}` is not a valid day.")
+        day_number = WEEKDAY_NAMES.index(day_name)
+        if day_number not in day_numbers:
+            day_numbers.append(day_number)
+
+    if len(day_numbers) == 0:
+        raise ValueError("Specify at least one day.")
+
+    return sorted(day_numbers)
+
+
+def format_days(days: List[int]) -> str:
+    if days == list(range(7)):
+        return "Every day"
+    if days == list(range(5)):
+        return "Weekdays"
+    if days == [5, 6]:
+        return "Weekends"
+    return ", ".join(WEEKDAY_NAMES[day].title() for day in days)
+
+
+def format_time(value: str) -> str:
+    parsed = datetime.datetime.strptime(value, "%H:%M").time()
+    return datetime.datetime.combine(datetime.date.today(), parsed).strftime("%I:%M %p").lstrip('0')
+
+
+def is_user_silent(user_id_str: str) -> bool:
+    settings = silent_settings.get(user_id_str, {})
+
+    if settings.get("dnd", False):
+        return True
+
+    schedules = settings.get("schedules", [])
+    if len(schedules) == 0:
+        return False
+
+    timezone_name = settings.get("timezone", "UTC")
+    try:
+        current = datetime.datetime.now(ZoneInfo(timezone_name))
+    except ZoneInfoNotFoundError:
+        current = datetime.datetime.now(datetime.timezone.utc)
+
+    current_day = current.weekday()
+    current_time = current.time().replace(second=0, microsecond=0)
+
+    for schedule in schedules:
+        days = schedule["days"]
+        start = datetime.datetime.strptime(schedule["start"], "%H:%M").time()
+        end = datetime.datetime.strptime(schedule["end"], "%H:%M").time()
+
+        if start == end:
+            if current_day in days:
+                return True
+        elif start < end:
+            if current_day in days and start <= current_time < end:
+                return True
+        else:
+            previous_day = (current_day - 1) % 7
+            if (current_day in days and current_time >= start) or (previous_day in days and current_time < end):
+                return True
+
+    return False
 
 # endregion
 
@@ -484,46 +600,7 @@ class RemovePingView(discord.ui.View):
 # endregion
 
 # region silent hours
-# class SilentHoursStart(discord.ui.View):
-#     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
-#         super().__init__()
-#         self.channels = channels
-#         self.links = links
-    
-#     @discord.ui.button(label="Continue")
-#     async def open_modal(self, interaction: discord.Interaction, button: discord.ui.Button):
-#         await interaction.response.send_modal(AddPingCountModal(self.channels, self.links))
-
-
-# class SilentHoursModal(discord.ui.Modal, title="Specify member count"):
-#     def __init__(self, channels: List[discord.app_commands.AppCommandChannel], links: List[str]):
-#         super().__init__()
-    
-
-#     start_time = discord.ui.TextInput(
-#         label="Start time",
-#         placeholder="Enter a start time in ",
-#         max_length=3,
-#         style=discord.TextStyle.short
-#     )
-
-#     async def on_submit(self, interaction: discord.Interaction):
-#         # if not self.notify_count.value:
-#         #     notify_count = bot.default_settings["notify_count"]
-#         # else:
-
-#         error_message = f"`{self.notify_count.value}` is not a valid number! Only positive whole numbers are allowed."
-
-# class TimeSelect(discord.ui.Select):
-#     def __init__(self):
-#         super().__init__(placeholder="Select one or more channels", min_values=1, max_values=25)
-#         self.channel_types = [discord.ChannelType.voice]
-
-#     async def callback(self, interaction: discord.Interaction):
-#         if len(self.values) <= 0:
-#             await interaction.response.send_message(f"You must select at least one channel!", ephemeral=True)
-#             return
-
+# Silent-hours commands are defined below with the other bot commands.
 # endregion
 
 # region Reused errors
@@ -659,28 +736,169 @@ async def visible(ctx: commands.Context, value: return_stripped):
         await ctx.send(f"The visibility of command responses has been **reset** to the bot's default: `{bot.default_settings['ephemeral']}`", reference=ctx.message, ephemeral=True)
 
 
-# @bot.hybrid_group()
-# async def set(ctx: commands.Context):
-#     """Various personal settings."""
-
-#     if ctx.invoked_subcommand is None:
-#         await ctx.send(f"{ctx.invoked_subcommand} is not a valid subcommand.", reference=ctx.message, ephemeral=True)
-
-
-# def return_time(argument: str):
-#     try:
-#         datetime.datetime.strptime(argument, '%I:%M %p')
-#     except:
-#         return argument.lower()
-    
-# def return_weekday(argument: str):
+@bot.hybrid_group(name="silent")
+async def silent(ctx: commands.Context):
+    """Manage times during which you will not be notified."""
+    if ctx.invoked_subcommand is None:
+        await ctx.send(
+            "Use `/silent add`, `/silent remove`, or `/silent list`.",
+            reference=ctx.message,
+            ephemeral=True
+        )
 
 
+@silent.command(name="add")
+@app_commands.describe(
+    days="Every day, weekdays, weekends, or comma-separated days",
+    start_time="For example: 10:30 PM, 7 AM, or 22:30",
+    end_time="For example: 8:00 AM, 9 AM, or 09:00",
+    timezone="An IANA timezone such as America/Phoenix or America/New_York"
+)
+async def silent_add(
+    ctx: commands.Context,
+    days: str,
+    start_time: str,
+    end_time: str,
+    timezone: str
+):
+    """Add recurring silent hours."""
+    try:
+        parsed_days = parse_days(days)
+        parsed_start = parse_time(start_time)
+        parsed_end = parse_time(end_time)
+        ZoneInfo(timezone)
+    except (ValueError, ZoneInfoNotFoundError) as error:
+        await ctx.send(str(error), reference=ctx.message, ephemeral=True)
+        return
 
-# @bot.hybrid_command()
-# async def silenthours(ctx: commands.Context):
-#     """Set the times during which you will never be notified."""
+    user_id_str = str(ctx.author.id)
+    if user_id_str not in silent_settings:
+        silent_settings[user_id_str] = {
+            "dnd": False,
+            "timezone": timezone,
+            "schedules": []
+        }
 
+    silent_settings[user_id_str]["timezone"] = timezone
+    if "schedules" not in silent_settings[user_id_str]:
+        silent_settings[user_id_str]["schedules"] = []
+
+    schedule = {
+        "id": uuid.uuid4().hex[:8],
+        "days": parsed_days,
+        "start": parsed_start.strftime("%H:%M"),
+        "end": parsed_end.strftime("%H:%M")
+    }
+    silent_settings[user_id_str]["schedules"].append(schedule)
+    save_silent_settings()
+
+    full_day_note = " This covers the entire selected day." if parsed_start == parsed_end else ""
+    await ctx.send(
+        f"Silent hours **{schedule['id']}** added: **{format_days(parsed_days)}**, "
+        f"**{format_time(schedule['start'])}–{format_time(schedule['end'])}** "
+        f"in **{timezone}**.{full_day_note}",
+        reference=ctx.message,
+        ephemeral=True
+    )
+
+
+@silent.command(name="remove")
+@app_commands.describe(schedule_id="The ID shown by /silent list")
+async def silent_remove(ctx: commands.Context, schedule_id: str):
+    """Remove recurring silent hours."""
+    user_id_str = str(ctx.author.id)
+    schedules = silent_settings.get(user_id_str, {}).get("schedules", [])
+
+    for schedule in schedules:
+        if schedule["id"].lower() == schedule_id.strip().lower():
+            schedules.remove(schedule)
+            save_silent_settings()
+            await ctx.send(
+                f"Silent hours **{schedule['id']}** removed.",
+                reference=ctx.message,
+                ephemeral=True
+            )
+            return
+
+    await ctx.send(
+        f"I could not find silent hours with the ID `{schedule_id}`. Use `/silent list` to see your IDs.",
+        reference=ctx.message,
+        ephemeral=True
+    )
+
+
+@silent.command(name="list")
+async def silent_list(ctx: commands.Context):
+    """List your recurring silent hours."""
+    user_id_str = str(ctx.author.id)
+    settings = silent_settings.get(user_id_str, {})
+    schedules = settings.get("schedules", [])
+    timezone = settings.get("timezone", "UTC")
+
+    if len(schedules) == 0:
+        await ctx.send(
+            f"You have no silent hours set. Do not disturb is currently **{'on' if settings.get('dnd', False) else 'off'}**.",
+            reference=ctx.message,
+            ephemeral=True
+        )
+        return
+
+    lines = []
+    for schedule in schedules:
+        full_day = " (all day)" if schedule["start"] == schedule["end"] else ""
+        lines.append(
+            f"- **{schedule['id']}** — {format_days(schedule['days'])}, "
+            f"{format_time(schedule['start'])}–{format_time(schedule['end'])}{full_day}"
+        )
+
+    embed = discord.Embed(
+        title="Your silent hours",
+        description="\n".join(lines)
+    )
+    embed.add_field(name="Timezone", value=timezone, inline=False)
+    embed.add_field(
+        name="Do not disturb",
+        value="On" if settings.get("dnd", False) else "Off",
+        inline=False
+    )
+    await ctx.send(embed=embed, reference=ctx.message, ephemeral=True)
+
+
+@bot.hybrid_command(name="dnd")
+@app_commands.describe(value="Turn do not disturb on, off, or check its status")
+@app_commands.choices(value=[
+    app_commands.Choice(name="On", value="on"),
+    app_commands.Choice(name="Off", value="off"),
+    app_commands.Choice(name="Status", value="status")
+])
+async def dnd(ctx: commands.Context, value: app_commands.Choice[str]):
+    """Temporarily stop all notifications until you turn them back on."""
+    user_id_str = str(ctx.author.id)
+    selected = value.value if isinstance(value, app_commands.Choice) else str(value).lower()
+
+    if user_id_str not in silent_settings:
+        silent_settings[user_id_str] = {
+            "dnd": False,
+            "timezone": "UTC",
+            "schedules": []
+        }
+
+    if selected == "status":
+        status = "on" if silent_settings[user_id_str].get("dnd", False) else "off"
+        await ctx.send(
+            f"Do not disturb is currently **{status}**.",
+            reference=ctx.message,
+            ephemeral=True
+        )
+        return
+
+    silent_settings[user_id_str]["dnd"] = selected == "on"
+    save_silent_settings()
+    await ctx.send(
+        f"Do not disturb has been turned **{selected}**.",
+        reference=ctx.message,
+        ephemeral=True
+    )
 
 
 # endregion
@@ -769,6 +987,9 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
         # endregion
         if guild_id_str in pings and channel_id_str in pings[guild_id_str] and count_str in pings[guild_id_str][channel_id_str]: #If people have signed up to be pinged for this count in this channel and guild
             for pinged_id_str in pings[guild_id_str][channel_id_str][count_str]: #For each user that wants to be pinged for this count
+                if is_user_silent(pinged_id_str):
+                    continue
+
                 pinged_user = bot.get_user(int(pinged_id_str))
                 if pinged_id_str in bot.notified_channels: #If this user already has been pinged, and that has already been recorded
                     if channel_id in bot.notified_channels[pinged_id_str]: #if they were already pinged for this channel
