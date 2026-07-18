@@ -1521,6 +1521,12 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                     continue
 
                 pinged_user = bot.get_user(int(pinged_id_str))
+                if pinged_user is None:
+                    try:
+                        pinged_user = await bot.fetch_user(int(pinged_id_str))
+                    except (discord.NotFound, discord.HTTPException) as error:
+                        print(f"Could not find user {pinged_id_str}: {error}")
+                        continue
                 if pinged_id_str in bot.notified_channels: #If this user already has been pinged, and that has already been recorded
                     if channel_id in bot.notified_channels[pinged_id_str]: #if they were already pinged for this channel
                         if count in bot.notified_channels[pinged_id_str][channel_id]: #if they were already pinged for this count
@@ -1546,9 +1552,8 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
                 
                 try:
                     message = await pinged_user.send(f"{members_message} {verb} currently in https://discord.com/channels/{guild_id_str}/{channel_id_str}")
-                except discord.Forbidden as error:
-                    print(f"Could not send ping to {pinged_user.name}: {error}")
-                
+                except (discord.Forbidden, discord.HTTPException) as error:
+                    print(f"Could not send ping to {pinged_user} ({pinged_id_str}): {error}")
                 else:
                     bot.notified_channels[pinged_id_str][channel_id][count] = message
         else:
