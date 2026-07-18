@@ -669,6 +669,12 @@ class SilentTimezoneView(discord.ui.View):
         return math.ceil(len(timezones) / 25)
 
     def make_embed(self) -> discord.Embed:
+        selected_region_text = (
+            self.selected_region
+            if self.selected_region is not None
+            else "Not selected"
+        )
+
         selected_timezone_text = (
             self.selected_timezone
             if self.selected_timezone is not None
@@ -682,6 +688,12 @@ class SilentTimezoneView(discord.ui.View):
                 "Select a region, choose your timezone, and then press "
                 "**Save timezone**."
             )
+        )
+
+        embed.add_field(
+            name="Selected region",
+            value=selected_region_text,
+            inline=False
         )
 
         embed.add_field(
