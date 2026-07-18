@@ -10,19 +10,83 @@
 
 ---
 
-Voicely Ping is a discord bot that allows users to set up direct message notifications for when there are a certain number of people in a voice channel.
+Voicely Ping is a Discord bot that allows users to set up direct message notifications for when there are a certain number of people in a voice channel.
 
 ## Commands
-There are two commands:
-### `/ping add`
+
+### Pings
+
+#### `/ping add`
+
 This command brings you through a form that allows you to set up pings for multiple channels.
-### `/ping remove`
+
+#### `/ping remove`
+
 This command generates dropdowns that allow you to remove pings you have already set.
-### `/visible`
-This command is available to **server admin** and sets whether commands return a response that is visible to other server members.
+
+### Silent Hours
+
+#### `/silent add`
+
+This command allows you to set up one or more recurring silent hours during which you will never receive ping notifications.
+
+You will be asked to specify:
+
+* **Days** – The days of the week the silent hours apply to. You can specify:
+  * A single day, such as `Monday`.
+  * Multiple days separated by commas, such as `Monday,Wednesday,Friday`.
+  * A range of days, such as `Monday-Friday`.
+  * `Weekdays`.
+  * `Weekends`.
+  * `Every day`.
+* **Start Time** – The time the silent hours begin.
+* **End Time** – The time the silent hours end.
+* **Time Zone** – The time zone the hours should be interpreted in.
+
+If the start time is later than the end time, the silent hours will continue overnight into the following day.
+
+For example, if you set:
+
+* **Days:** `Weekdays`
+* **Start Time:** `10:00 PM`
+* **End Time:** `8:00 AM`
+
+You will not receive notifications from **10:00 PM** until **8:00 AM** on weekday nights.
+
+#### `/silent remove`
+
+This command generates dropdowns that allow you to remove silent hours you have already set.
+
+### Do Not Disturb
+
+#### `/dnd enable`
+
+This command enables **Do Not Disturb**, temporarily preventing all ping notifications until you turn it off again.
+
+#### `/dnd disable`
+
+This command disables **Do Not Disturb**, allowing you to receive ping notifications again.
+
+#### `/dnd status`
+
+This command tells you whether **Do Not Disturb** is currently enabled or disabled.
+
+### Admin commands
+
+Available to **server admins**.
+
+#### `/visible`
+
+This command sets whether command responses are visible to other server members.
+
 ## How Pings Work
+
 When the number of people you specified are in one of the voice channels you specified, you will receive a **direct message** telling you who or how many people *(if more than five)* are in the voice channel.
 
 Unless you set up more than one ping for it, you will not receive another notification until **everyone has left** the voice channel, after which the message you received will be **edited** to reflect that.
+
+You will not receive notifications while **Do Not Disturb** is enabled or during any **silent hours** that you have configured.
+
 # Support
+
 If you have any problems with the bot or want to request a feature, please create an [issue](https://github.com/Erallie/voicely-ping/issues), and I will try to get to it as soon as I can!
