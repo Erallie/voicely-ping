@@ -1246,7 +1246,7 @@ async def visible(ctx: commands.Context, value: return_stripped):
 
 # region silent hours
 
-@bot.hybrid_group(name="silent")
+@bot.hybrid_group(name="silenthours")
 async def silenthours(ctx: commands.Context):
     """Manage times during which you will not be notified."""
     if ctx.invoked_subcommand is None:
