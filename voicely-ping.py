@@ -623,9 +623,170 @@ def get_timezones_for_region(region: str) -> List[str]:
         if timezone.startswith(f"{region}/")
     )
 
-
 def timezone_display_name(timezone: str) -> str:
     return timezone.split("/", 1)[1].replace("_", " ")
+
+class SilentTimezoneView(discord.ui.View):
+    def __init__(self, user_id: int, current_timezone: str):
+        super().__init__(timeout=300)
+
+        self.user_id = user_id
+        self.current_timezone = current_timezone
+        self.selected_region: str | None = None
+        self.selected_timezone: str | None = None
+        self.timezone_page = 0
+
+        self.add_item(SilentTimezoneRegionSelect())
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "Only the person who opened this menu can use it.",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    def get_region_timezones(self) -> List[str]:
+        if self.selected_region is None:
+            return []
+
+        if self.selected_region == "UTC":
+            return ["UTC"]
+
+        return get_timezones_for_region(self.selected_region)
+
+    def get_timezone_page_count(self) -> int:
+        timezones = self.get_region_timezones()
+
+        if len(timezones) == 0:
+            return 1
+
+        return math.ceil(len(timezones) / 25)
+
+    def make_embed(self) -> discord.Embed:
+        selected_timezone_text = (
+            self.selected_timezone
+            if self.selected_timezone is not None
+            else "Not selected"
+        )
+
+        embed = discord.Embed(
+            title="Set your silent-hours timezone",
+            description=(
+                f"Your current timezone is **{self.current_timezone}**.\n\n"
+                "Select a region, choose your timezone, and then press "
+                "**Save timezone**."
+            )
+        )
+
+        embed.add_field(
+            name="Selected timezone",
+            value=selected_timezone_text,
+            inline=False
+        )
+
+        if (
+            self.selected_region is not None
+            and self.selected_region != "UTC"
+        ):
+            embed.set_footer(
+                text=(
+                    f"Timezone page {self.timezone_page + 1} "
+                    f"of {self.get_timezone_page_count()}"
+                )
+            )
+
+        return embed
+
+    def rebuild_timezone_menu(self):
+        for item in list(self.children):
+            if isinstance(
+                item,
+                (
+                    SilentTimezoneSelect,
+                    PreviousTimezonePageButton,
+                    NextTimezonePageButton
+                )
+            ):
+                self.remove_item(item)
+
+        if (
+            self.selected_region is None
+            or self.selected_region == "UTC"
+        ):
+            return
+
+        all_timezones = self.get_region_timezones()
+
+        start_index = self.timezone_page * 25
+        page_timezones = all_timezones[
+            start_index:start_index + 25
+        ]
+
+        if len(page_timezones) > 0:
+            timezone_select = SilentTimezoneSelect(
+                self.selected_region,
+                page_timezones,
+                self.timezone_page
+            )
+
+            if self.selected_timezone in page_timezones:
+                for option in timezone_select.options:
+                    if option.value == self.selected_timezone:
+                        option.default = True
+
+            self.add_item(timezone_select)
+
+        page_count = self.get_timezone_page_count()
+
+        if page_count > 1:
+            previous_button = PreviousTimezonePageButton()
+            next_button = NextTimezonePageButton()
+
+            previous_button.disabled = self.timezone_page == 0
+            next_button.disabled = (
+                self.timezone_page >= page_count - 1
+            )
+
+            self.add_item(previous_button)
+            self.add_item(next_button)
+
+    @discord.ui.button(
+        label="Save timezone",
+        style=discord.ButtonStyle.primary,
+        row=4
+    )
+    async def save_timezone(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if self.selected_timezone is None:
+            await interaction.response.send_message(
+                "Select a timezone first.",
+                ephemeral=True
+            )
+            return
+
+        user_id_str = str(interaction.user.id)
+        ensure_silent_settings(user_id_str)
+
+        silent_settings[user_id_str]["timezone"] = (
+            self.selected_timezone
+        )
+
+        save_silent_settings()
+
+        await interaction.response.send_message(
+            f"Your silent-hours timezone has been set to "
+            f"**{self.selected_timezone}**.",
+            ephemeral=True
+        )
 
 class SilentDaySelect(discord.ui.Select):
     def __init__(self):
@@ -816,7 +977,7 @@ class SilentTimeModal(discord.ui.Modal, title="Set silent hours"):
         try:
             parsed_start = parse_time(self.start_time.value)
             parsed_end = parse_time(self.end_time.value)
-            ZoneInfo(self.setup_view.selected_timezone)
+            ZoneInfo(self.setup_view.timezone)
         except (ValueError, ZoneInfoNotFoundError) as error:
             await interaction.response.send_message(
                 str(error),
@@ -826,16 +987,9 @@ class SilentTimeModal(discord.ui.Modal, title="Set silent hours"):
 
         user_id_str = str(interaction.user.id)
 
-        if user_id_str not in silent_settings:
-            silent_settings[user_id_str] = {
-                "dnd": False,
-                "timezone": self.setup_view.selected_timezone,
-                "schedules": []
-            }
+        ensure_silent_settings(user_id_str)
 
-        silent_settings[user_id_str]["timezone"] = (
-            self.setup_view.selected_timezone
-        )
+        silent_settings[user_id_str]["timezone"] = self.setup_view.timezone
 
         if "schedules" not in silent_settings[user_id_str]:
             silent_settings[user_id_str]["schedules"] = []
@@ -861,27 +1015,20 @@ class SilentTimeModal(discord.ui.Modal, title="Set silent hours"):
             f"**{format_days(schedule['days'])}**, "
             f"**{format_time(schedule['start'])}–"
             f"{format_time(schedule['end'])}** "
-            f"in **{self.setup_view.selected_timezone}**."
             f"{full_day_note}",
             ephemeral=True
         )
 
 
 class SilentSetupView(discord.ui.View):
-    def __init__(self, user_id: int):
+    def __init__(self, user_id: int, timezone: str):
         super().__init__(timeout=300)
 
         self.user_id = user_id
+        self.timezone = timezone
         self.selected_days: List[int] = []
-        self.selected_region: str | None = None
-        self.selected_timezone: str | None = None
-        self.timezone_page = 0
 
-        self.day_select = SilentDaySelect()
-        self.region_select = SilentTimezoneRegionSelect()
-
-        self.add_item(self.day_select)
-        self.add_item(self.region_select)
+        self.add_item(SilentDaySelect())
 
     async def interaction_check(
         self,
@@ -896,23 +1043,6 @@ class SilentSetupView(discord.ui.View):
 
         return True
 
-    def get_region_timezones(self) -> List[str]:
-        if self.selected_region is None:
-            return []
-
-        if self.selected_region == "UTC":
-            return ["UTC"]
-
-        return get_timezones_for_region(self.selected_region)
-
-    def get_timezone_page_count(self) -> int:
-        timezones = self.get_region_timezones()
-
-        if len(timezones) == 0:
-            return 1
-
-        return math.ceil(len(timezones) / 25)
-
     def make_embed(self) -> discord.Embed:
         selected_days_text = (
             format_days(self.selected_days)
@@ -920,25 +1050,13 @@ class SilentSetupView(discord.ui.View):
             else "Not selected"
         )
 
-        selected_region_text = (
-            self.selected_region
-            if self.selected_region is not None
-            else "Not selected"
-        )
-
-        selected_timezone_text = (
-            self.selected_timezone
-            if self.selected_timezone is not None
-            else "Not selected"
-        )
-
         embed = discord.Embed(
             title="Set up silent hours",
             description=(
                 "1. Select one or more days.\n"
-                "2. Select a timezone region.\n"
-                "3. Select your timezone.\n"
-                "4. Press **Enter times**."
+                "2. Press **Enter times**.\n\n"
+                f"Your current timezone is **{self.timezone}**.\n"
+                "To change it, run `/silenthours timezone`."
             )
         )
 
@@ -949,83 +1067,17 @@ class SilentSetupView(discord.ui.View):
         )
 
         embed.add_field(
-            name="Region",
-            value=selected_region_text,
-            inline=True
-        )
-
-        embed.add_field(
             name="Timezone",
-            value=selected_timezone_text,
-            inline=True
+            value=self.timezone,
+            inline=False
         )
-
-        if (
-            self.selected_region is not None
-            and self.selected_region != "UTC"
-        ):
-            embed.set_footer(
-                text=(
-                    f"Timezone page {self.timezone_page + 1} "
-                    f"of {self.get_timezone_page_count()}"
-                )
-            )
 
         return embed
-
-    def rebuild_timezone_menu(self):
-        for item in list(self.children):
-            if isinstance(
-                item,
-                (
-                    SilentTimezoneSelect,
-                    PreviousTimezonePageButton,
-                    NextTimezonePageButton
-                )
-            ):
-                self.remove_item(item)
-
-        if (
-            self.selected_region is None
-            or self.selected_region == "UTC"
-        ):
-            return
-
-        all_timezones = self.get_region_timezones()
-
-        start_index = self.timezone_page * 25
-        page_timezones = all_timezones[start_index:start_index + 25]
-
-        if len(page_timezones) > 0:
-            timezone_select = SilentTimezoneSelect(
-                self.selected_region,
-                page_timezones,
-                self.timezone_page
-            )
-
-            if self.selected_timezone in page_timezones:
-                for option in timezone_select.options:
-                    if option.value == self.selected_timezone:
-                        option.default = True
-
-            self.add_item(timezone_select)
-
-        page_count = self.get_timezone_page_count()
-
-        if page_count > 1:
-            previous_button = PreviousTimezonePageButton()
-            next_button = NextTimezonePageButton()
-
-            previous_button.disabled = self.timezone_page == 0
-            next_button.disabled = self.timezone_page >= page_count - 1
-
-            self.add_item(previous_button)
-            self.add_item(next_button)
 
     @discord.ui.button(
         label="Enter times",
         style=discord.ButtonStyle.primary,
-        row=4
+        row=1
     )
     async def enter_times(
         self,
@@ -1035,13 +1087,6 @@ class SilentSetupView(discord.ui.View):
         if len(self.selected_days) == 0:
             await interaction.response.send_message(
                 "Select at least one day first.",
-                ephemeral=True
-            )
-            return
-
-        if self.selected_timezone is None:
-            await interaction.response.send_message(
-                "Select a timezone first.",
                 ephemeral=True
             )
             return
@@ -1251,7 +1296,8 @@ async def silenthours(ctx: commands.Context):
     """Manage times during which you will not be notified."""
     if ctx.invoked_subcommand is None:
         await ctx.send(
-            "Manage times during which you will not be notified. Use `/silent add`, `/silent remove`, or `/silent list`.",
+            "Use `/silenthours add`, `/silenthours remove`, "
+            "`/silenthours list`, or `/silenthours timezone`.",
             reference=ctx.message,
             ephemeral=True
         )
@@ -1261,7 +1307,15 @@ async def silenthours(ctx: commands.Context):
 async def silent_add(ctx: commands.Context):
     """Add recurring silent hours."""
 
-    view = SilentSetupView(ctx.author.id)
+    user_id_str = str(ctx.author.id)
+    ensure_silent_settings(user_id_str)
+
+    timezone = silent_settings[user_id_str].get("timezone", "UTC")
+
+    view = SilentSetupView(
+        ctx.author.id,
+        timezone
+    )
 
     await ctx.send(
         embed=view.make_embed(),
@@ -1335,6 +1389,30 @@ async def silent_list(ctx: commands.Context):
     )
     embed.add_field(name="Timezone", value=timezone, inline=False)
     await ctx.send(embed=embed, reference=ctx.message, ephemeral=True)
+
+@silenthours.command(name="timezone")
+async def silent_timezone(ctx: commands.Context):
+    """Set the timezone used by your silent hours."""
+
+    user_id_str = str(ctx.author.id)
+    ensure_silent_settings(user_id_str)
+
+    current_timezone = silent_settings[user_id_str].get(
+        "timezone",
+        "UTC"
+    )
+
+    view = SilentTimezoneView(
+        ctx.author.id,
+        current_timezone
+    )
+
+    await ctx.send(
+        embed=view.make_embed(),
+        view=view,
+        reference=ctx.message,
+        ephemeral=True
+    )
 
 # endregion
 
