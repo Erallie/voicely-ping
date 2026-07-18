@@ -1334,11 +1334,6 @@ async def silent_list(ctx: commands.Context):
         description="\n".join(lines)
     )
     embed.add_field(name="Timezone", value=timezone, inline=False)
-    embed.add_field(
-        name="Do not disturb",
-        value="On" if settings.get("dnd", False) else "Off",
-        inline=False
-    )
     await ctx.send(embed=embed, reference=ctx.message, ephemeral=True)
 
 # endregion
