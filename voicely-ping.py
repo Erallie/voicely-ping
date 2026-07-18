@@ -866,7 +866,7 @@ class SilentTimezoneRegionSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        view: SilentSetupView = self.view
+        view: SilentTimezoneView = self.view
         selected_region = self.values[0]
 
         if selected_region == "UTC":
@@ -919,7 +919,7 @@ class SilentTimezoneSelect(discord.ui.Select):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        view: SilentSetupView = self.view
+        view: SilentTimezoneView = self.view
         view.selected_timezone = self.values[0]
 
         view.rebuild_timezone_menu()
@@ -939,7 +939,7 @@ class PreviousTimezonePageButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        view: SilentSetupView = self.view
+        view: SilentTimezoneView = self.view
 
         if view.timezone_page > 0:
             view.timezone_page -= 1
@@ -961,7 +961,7 @@ class NextTimezonePageButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-        view: SilentSetupView = self.view
+        view: SilentTimezoneView = self.view
 
         page_count = view.get_timezone_page_count()
 
