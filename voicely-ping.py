@@ -48,12 +48,21 @@ class Bot(commands.Bot):
         # make sure to not notify people if they are already in the channel
 
     async def setup_hook(self) -> None:
-        guild = discord.Object(id=1102582171207741480)
+        if self.dev_guild_id is not None:
+            guild_object = discord.Object(id=self.dev_guild_id)
 
-        self.tree.clear_commands(guild=guild)
-        await self.tree.sync(guild=guild)
+            self.tree.copy_global_to(guild=guild_object)
 
-        print("Cleared guild commands.")
+            synced = await self.tree.sync(guild=guild_object)
+
+            print(
+                f"Synced {len(synced)} development command(s) "
+                f"to guild {self.dev_guild_id}."
+            )
+        else:
+            synced = await self.tree.sync()
+
+            print(f"Synced {len(synced)} global command(s).")
 
 
 # Create the bot instance with a command prefix
