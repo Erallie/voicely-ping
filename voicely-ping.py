@@ -21,6 +21,13 @@ intents.members = True
 class Bot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="$", intents=intents)
+
+        dev_guild_id = os.getenv("DEV_GUILD_ID")
+        self.dev_guild_id = (
+            int(dev_guild_id)
+            if dev_guild_id
+            else None
+        )
         self.default_settings = {
             "notify_count": 3,
             "reset_count": 0,
@@ -40,8 +47,22 @@ class Bot(commands.Bot):
         # }
         # make sure to not notify people if they are already in the channel
 
-    async def setup_hook(self):
-        print(f"Setup complete for {self.user}")
+    async def setup_hook(self) -> None:
+        if self.dev_guild_id is not None:
+            guild_object = discord.Object(id=self.dev_guild_id)
+
+            self.tree.copy_global_to(guild=guild_object)
+
+            synced = await self.tree.sync(guild=guild_object)
+
+            print(
+                f"Synced {len(synced)} development command(s) "
+                f"to guild {self.dev_guild_id}."
+            )
+        else:
+            synced = await self.tree.sync()
+
+            print(f"Synced {len(synced)} global command(s).")
 
 
 # Create the bot instance with a command prefix
