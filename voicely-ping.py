@@ -9,7 +9,7 @@ import datetime
 import sys
 import os
 import uuid
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 # import datetime
 
 # Define intents
@@ -621,6 +621,561 @@ async def send_dm_error(ctx: commands.Context):
 async def send_admin_error(ctx: commands.Context):
     await ctx.send(f"{return_full_command(ctx)} can only be used by server administrators.", reference=ctx.message, ephemeral=True)
 
+# region silent hour menus
+TIMEZONE_REGIONS = [
+    "Africa",
+    "America",
+    "Antarctica",
+    "Arctic",
+    "Asia",
+    "Atlantic",
+    "Australia",
+    "Europe",
+    "Indian",
+    "Pacific"
+]
+
+ALL_TIMEZONES = sorted(
+    timezone
+    for timezone in available_timezones()
+    if timezone == "UTC"
+    or any(
+        timezone.startswith(f"{region}/")
+        for region in TIMEZONE_REGIONS
+    )
+)
+
+COMMON_TIMEZONES = [
+    ("Arizona", "America/Phoenix"),
+    ("Pacific Time", "America/Los_Angeles"),
+    ("Mountain Time", "America/Denver"),
+    ("Central Time", "America/Chicago"),
+    ("Eastern Time", "America/New_York"),
+    ("Alaska Time", "America/Anchorage"),
+    ("Hawaii Time", "Pacific/Honolulu"),
+    ("UTC", "UTC"),
+    ("London", "Europe/London"),
+    ("Central Europe", "Europe/Berlin"),
+    ("Eastern Europe", "Europe/Helsinki"),
+    ("India", "Asia/Kolkata"),
+    ("China", "Asia/Shanghai"),
+    ("Japan", "Asia/Tokyo"),
+    ("South Korea", "Asia/Seoul"),
+    ("Singapore", "Asia/Singapore"),
+    ("Sydney", "Australia/Sydney"),
+    ("Melbourne", "Australia/Melbourne"),
+    ("Perth", "Australia/Perth"),
+    ("Auckland", "Pacific/Auckland")
+]
+
+
+class SilentDaySelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Monday", value="0"),
+            discord.SelectOption(label="Tuesday", value="1"),
+            discord.SelectOption(label="Wednesday", value="2"),
+            discord.SelectOption(label="Thursday", value="3"),
+            discord.SelectOption(label="Friday", value="4"),
+            discord.SelectOption(label="Saturday", value="5"),
+            discord.SelectOption(label="Sunday", value="6")
+        ]
+
+        super().__init__(
+            placeholder="Select one or more days",
+            min_values=1,
+            max_values=7,
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentSetupView = self.view
+        view.selected_days = sorted(int(value) for value in self.values)
+
+        await interaction.response.send_message(
+            f"Selected days: **{format_days(view.selected_days)}**.",
+            ephemeral=True
+        )
+
+
+class SilentTimezoneRegionSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(
+                label=region,
+                value=region
+            )
+            for region in TIMEZONE_REGIONS
+        ]
+
+        options.append(
+            discord.SelectOption(
+                label="UTC",
+                value="UTC",
+                description="Coordinated Universal Time"
+            )
+        )
+
+        super().__init__(
+            placeholder="Select a timezone region",
+            min_values=1,
+            max_values=1,
+            options=options,
+            row=1
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentSetupView = self.view
+        selected_region = self.values[0]
+
+        if selected_region == "UTC":
+            view.selected_region = "UTC"
+            view.selected_timezone = "UTC"
+            view.timezone_page = 0
+            view.rebuild_timezone_menu()
+
+            await interaction.response.edit_message(
+                embed=view.make_embed(),
+                view=view
+            )
+            return
+
+        view.selected_region = selected_region
+        view.selected_timezone = None
+        view.timezone_page = 0
+        view.rebuild_timezone_menu()
+
+        await interaction.response.edit_message(
+            embed=view.make_embed(),
+            view=view
+        )
+
+
+class SilentTimezoneSelect(discord.ui.Select):
+    def __init__(
+        self,
+        region: str,
+        timezones: List[str],
+        page: int
+    ):
+        options = []
+
+        for timezone in timezones:
+            options.append(
+                discord.SelectOption(
+                    label=timezone_display_name(timezone)[:100],
+                    value=timezone,
+                    description=timezone[:100]
+                )
+            )
+
+        super().__init__(
+            placeholder=f"Select a {region} timezone — page {page + 1}",
+            min_values=1,
+            max_values=1,
+            options=options,
+            row=2
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentSetupView = self.view
+        view.selected_timezone = self.values[0]
+
+        view.rebuild_timezone_menu()
+
+        await interaction.response.edit_message(
+            embed=view.make_embed(),
+            view=view
+        )
+
+
+class PreviousTimezonePageButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Previous",
+            style=discord.ButtonStyle.secondary,
+            row=3
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentSetupView = self.view
+
+        if view.timezone_page > 0:
+            view.timezone_page -= 1
+
+        view.rebuild_timezone_menu()
+
+        await interaction.response.edit_message(
+            embed=view.make_embed(),
+            view=view
+        )
+
+
+class NextTimezonePageButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Next",
+            style=discord.ButtonStyle.secondary,
+            row=3
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentSetupView = self.view
+
+        page_count = view.get_timezone_page_count()
+
+        if view.timezone_page < page_count - 1:
+            view.timezone_page += 1
+
+        view.rebuild_timezone_menu()
+
+        await interaction.response.edit_message(
+            embed=view.make_embed(),
+            view=view
+        )
+
+
+class SilentTimeModal(discord.ui.Modal, title="Set silent hours"):
+    start_time = discord.ui.TextInput(
+        label="Start time",
+        placeholder="For example: 10:30 PM, 7 AM, or 22:30",
+        style=discord.TextStyle.short,
+        max_length=20
+    )
+
+    end_time = discord.ui.TextInput(
+        label="End time",
+        placeholder="For example: 8:00 AM, 9 AM, or 09:00",
+        style=discord.TextStyle.short,
+        max_length=20
+    )
+
+    def __init__(self, setup_view):
+        super().__init__()
+        self.setup_view = setup_view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            parsed_start = parse_time(self.start_time.value)
+            parsed_end = parse_time(self.end_time.value)
+            ZoneInfo(self.setup_view.selected_timezone)
+        except (ValueError, ZoneInfoNotFoundError) as error:
+            await interaction.response.send_message(
+                str(error),
+                ephemeral=True
+            )
+            return
+
+        user_id_str = str(interaction.user.id)
+
+        if user_id_str not in silent_settings:
+            silent_settings[user_id_str] = {
+                "dnd": False,
+                "timezone": self.setup_view.selected_timezone,
+                "schedules": []
+            }
+
+        silent_settings[user_id_str]["timezone"] = (
+            self.setup_view.selected_timezone
+        )
+
+        if "schedules" not in silent_settings[user_id_str]:
+            silent_settings[user_id_str]["schedules"] = []
+
+        schedule = {
+            "id": uuid.uuid4().hex[:8],
+            "days": self.setup_view.selected_days,
+            "start": parsed_start.strftime("%H:%M"),
+            "end": parsed_end.strftime("%H:%M")
+        }
+
+        silent_settings[user_id_str]["schedules"].append(schedule)
+        save_silent_settings()
+
+        full_day_note = (
+            " This covers the entire selected day."
+            if parsed_start == parsed_end
+            else ""
+        )
+
+        await interaction.response.send_message(
+            f"Silent hours added: "
+            f"**{format_days(schedule['days'])}**, "
+            f"**{format_time(schedule['start'])}–"
+            f"{format_time(schedule['end'])}** "
+            f"in **{self.setup_view.selected_timezone}**."
+            f"{full_day_note}",
+            ephemeral=True
+        )
+
+
+class SilentSetupView(discord.ui.View):
+    def __init__(self, user_id: int):
+        super().__init__(timeout=300)
+
+        self.user_id = user_id
+        self.selected_days: List[int] = []
+        self.selected_region: str | None = None
+        self.selected_timezone: str | None = None
+        self.timezone_page = 0
+
+        self.day_select = SilentDaySelect()
+        self.region_select = SilentTimezoneRegionSelect()
+
+        self.add_item(self.day_select)
+        self.add_item(self.region_select)
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction
+    ) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "Only the person who opened this menu can use it.",
+                ephemeral=True
+            )
+            return False
+
+        return True
+
+    def get_region_timezones(self) -> List[str]:
+        if self.selected_region is None:
+            return []
+
+        if self.selected_region == "UTC":
+            return ["UTC"]
+
+        return get_timezones_for_region(self.selected_region)
+
+    def get_timezone_page_count(self) -> int:
+        timezones = self.get_region_timezones()
+
+        if len(timezones) == 0:
+            return 1
+
+        return math.ceil(len(timezones) / 25)
+
+    def make_embed(self) -> discord.Embed:
+        selected_days_text = (
+            format_days(self.selected_days)
+            if len(self.selected_days) > 0
+            else "Not selected"
+        )
+
+        selected_region_text = (
+            self.selected_region
+            if self.selected_region is not None
+            else "Not selected"
+        )
+
+        selected_timezone_text = (
+            self.selected_timezone
+            if self.selected_timezone is not None
+            else "Not selected"
+        )
+
+        embed = discord.Embed(
+            title="Set up silent hours",
+            description=(
+                "1. Select one or more days.\n"
+                "2. Select a timezone region.\n"
+                "3. Select your timezone.\n"
+                "4. Press **Enter times**."
+            )
+        )
+
+        embed.add_field(
+            name="Days",
+            value=selected_days_text,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Region",
+            value=selected_region_text,
+            inline=True
+        )
+
+        embed.add_field(
+            name="Timezone",
+            value=selected_timezone_text,
+            inline=True
+        )
+
+        if (
+            self.selected_region is not None
+            and self.selected_region != "UTC"
+        ):
+            embed.set_footer(
+                text=(
+                    f"Timezone page {self.timezone_page + 1} "
+                    f"of {self.get_timezone_page_count()}"
+                )
+            )
+
+        return embed
+
+    def rebuild_timezone_menu(self):
+        for item in list(self.children):
+            if isinstance(
+                item,
+                (
+                    SilentTimezoneSelect,
+                    PreviousTimezonePageButton,
+                    NextTimezonePageButton
+                )
+            ):
+                self.remove_item(item)
+
+        if (
+            self.selected_region is None
+            or self.selected_region == "UTC"
+        ):
+            return
+
+        all_timezones = self.get_region_timezones()
+
+        start_index = self.timezone_page * 25
+        page_timezones = all_timezones[start_index:start_index + 25]
+
+        if len(page_timezones) > 0:
+            timezone_select = SilentTimezoneSelect(
+                self.selected_region,
+                page_timezones,
+                self.timezone_page
+            )
+
+            if self.selected_timezone in page_timezones:
+                for option in timezone_select.options:
+                    if option.value == self.selected_timezone:
+                        option.default = True
+
+            self.add_item(timezone_select)
+
+        page_count = self.get_timezone_page_count()
+
+        if page_count > 1:
+            previous_button = PreviousTimezonePageButton()
+            next_button = NextTimezonePageButton()
+
+            previous_button.disabled = self.timezone_page == 0
+            next_button.disabled = self.timezone_page >= page_count - 1
+
+            self.add_item(previous_button)
+            self.add_item(next_button)
+
+    @discord.ui.button(
+        label="Enter times",
+        style=discord.ButtonStyle.primary,
+        row=4
+    )
+    async def enter_times(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        if len(self.selected_days) == 0:
+            await interaction.response.send_message(
+                "Select at least one day first.",
+                ephemeral=True
+            )
+            return
+
+        if self.selected_timezone is None:
+            await interaction.response.send_message(
+                "Select a timezone first.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.send_modal(
+            SilentTimeModal(self)
+        )
+
+
+class RemoveSilentSelect(discord.ui.Select):
+    def __init__(self, schedules: List[dict], index: int):
+        self.schedules = schedules
+
+        options = []
+
+        for schedule in schedules:
+            full_day = (
+                " (all day)"
+                if schedule["start"] == schedule["end"]
+                else ""
+            )
+
+            options.append(
+                discord.SelectOption(
+                    label=(
+                        f"{format_days(schedule['days'])}: "
+                        f"{format_time(schedule['start'])}–"
+                        f"{format_time(schedule['end'])}"
+                    )[:100],
+                    description=f"Schedule ID: {schedule['id']}{full_day}"[:100],
+                    value=schedule["id"]
+                )
+            )
+
+        super().__init__(
+            placeholder=f"Silent hours {index + 1}",
+            min_values=1,
+            max_values=len(options),
+            options=options
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        user_id_str = str(interaction.user.id)
+
+        user_settings = silent_settings.get(user_id_str, {})
+        schedules = user_settings.get("schedules", [])
+
+        removed_count = 0
+
+        for schedule_id in self.values:
+            matching_schedule = next(
+                (
+                    schedule
+                    for schedule in schedules
+                    if schedule["id"] == schedule_id
+                ),
+                None
+            )
+
+            if matching_schedule is not None:
+                schedules.remove(matching_schedule)
+                removed_count += 1
+
+        save_silent_settings()
+
+        plural = "" if removed_count == 1 else "s"
+
+        await interaction.response.send_message(
+            f"Successfully removed **{removed_count} "
+            f"silent-hour schedule{plural}**.",
+            ephemeral=True
+        )
+
+
+class RemoveSilentView(discord.ui.View):
+    def __init__(self, schedules: List[dict]):
+        super().__init__(timeout=300)
+
+        # Discord allows up to 25 options in each dropdown.
+        # Five dropdowns supports up to 125 schedules.
+        for index in range(0, min(len(schedules), 125), 25):
+            chunk = schedules[index:index + 25]
+
+            self.add_item(
+                RemoveSilentSelect(
+                    chunk,
+                    index // 25
+                )
+            )
+
+# endregion
+
 # region commands
 def return_stripped(argument: str):
     return argument.strip().lower()
@@ -732,6 +1287,272 @@ async def visible(ctx: commands.Context, value: return_stripped):
         await ctx.send(f"The visibility of command responses has been **reset** to the bot's default: `{bot.default_settings['ephemeral']}`", reference=ctx.message, ephemeral=True)
 
 # region silent hours
+
+TIMEZONE_OPTIONS = [
+    ("Arizona", "America/Phoenix"),
+    ("Pacific Time", "America/Los_Angeles"),
+    ("Mountain Time", "America/Denver"),
+    ("Central Time", "America/Chicago"),
+    ("Eastern Time", "America/New_York"),
+    ("Alaska Time", "America/Anchorage"),
+    ("Hawaii Time", "Pacific/Honolulu"),
+    ("Atlantic Time", "America/Halifax"),
+    ("Newfoundland Time", "America/St_Johns"),
+    ("UTC", "UTC"),
+    ("London", "Europe/London"),
+    ("Paris / Berlin", "Europe/Paris"),
+    ("Athens", "Europe/Athens"),
+    ("Moscow", "Europe/Moscow"),
+    ("Dubai", "Asia/Dubai"),
+    ("India", "Asia/Kolkata"),
+    ("Bangkok", "Asia/Bangkok"),
+    ("China", "Asia/Shanghai"),
+    ("Japan", "Asia/Tokyo"),
+    ("South Korea", "Asia/Seoul"),
+    ("Perth", "Australia/Perth"),
+    ("Adelaide", "Australia/Adelaide"),
+    ("Sydney", "Australia/Sydney"),
+    ("Auckland", "Pacific/Auckland"),
+]
+
+
+class SilentDaysSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label=day.title(), value=str(index))
+            for index, day in enumerate(WEEKDAY_NAMES)
+        ]
+        super().__init__(
+            placeholder="Select one or more days",
+            min_values=1,
+            max_values=7,
+            options=options,
+            row=0
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentSetupView = self.view
+        view.selected_days = sorted(
+            int(value)
+            for value in self.values
+        )
+
+        await interaction.response.edit_message(
+            embed=view.make_embed(),
+            view=view
+        )
+
+
+class SilentTimezoneSelect(discord.ui.Select):
+    def __init__(self, current_timezone: str):
+        options = [
+            discord.SelectOption(
+                label=label,
+                value=value,
+                description=value,
+                default=value == current_timezone
+            )
+            for label, value in TIMEZONE_OPTIONS
+        ]
+        super().__init__(
+            placeholder="Select one or more days",
+            min_values=1,
+            max_values=7,
+            options=options,
+            row=0
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: SilentAddView = self.view
+        if not await view.check_user(interaction):
+            return
+
+        view.selected_timezone = self.values[0]
+        await interaction.response.defer()
+
+
+class SilentTimeModal(discord.ui.Modal, title="Set silent hours"):
+    start_time = discord.ui.TextInput(
+        label="Start time",
+        placeholder="For example: 10:00 PM",
+        max_length=20
+    )
+    end_time = discord.ui.TextInput(
+        label="End time",
+        placeholder="For example: 8:00 AM",
+        max_length=20
+    )
+
+    def __init__(self, setup_view: "SilentAddView"):
+        super().__init__()
+        self.setup_view = setup_view
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if interaction.user.id != self.setup_view.user_id:
+            await interaction.response.send_message(
+                "Only the person who opened this menu can use it.",
+                ephemeral=True
+            )
+            return
+
+        if not self.setup_view.selected_days:
+            await interaction.response.send_message(
+                "Select at least one day before continuing.",
+                ephemeral=True
+            )
+            return
+
+        if self.setup_view.selected_timezone is None:
+            await interaction.response.send_message(
+                "Select a time zone before continuing.",
+                ephemeral=True
+            )
+            return
+
+        try:
+            parsed_start = parse_time(str(self.start_time))
+            parsed_end = parse_time(str(self.end_time))
+            ZoneInfo(self.setup_view.selected_timezone)
+        except (ValueError, ZoneInfoNotFoundError) as error:
+            await interaction.response.send_message(str(error), ephemeral=True)
+            return
+
+        user_id_str = str(interaction.user.id)
+        if user_id_str not in silent_settings:
+            silent_settings[user_id_str] = {
+                "dnd": False,
+                "timezone": self.setup_view.selected_timezone,
+                "schedules": []
+            }
+
+        silent_settings[user_id_str]["timezone"] = self.setup_view.selected_timezone
+        silent_settings[user_id_str].setdefault("schedules", [])
+
+        schedule = {
+            "id": uuid.uuid4().hex[:8],
+            "days": self.setup_view.selected_days,
+            "start": parsed_start.strftime("%H:%M"),
+            "end": parsed_end.strftime("%H:%M")
+        }
+        silent_settings[user_id_str]["schedules"].append(schedule)
+        save_silent_settings()
+
+        full_day_note = " This covers the entire selected day." if parsed_start == parsed_end else ""
+        await interaction.response.send_message(
+            f"Silent hours **{schedule['id']}** added: "
+            f"**{format_days(schedule['days'])}**, "
+            f"**{format_time(schedule['start'])}–{format_time(schedule['end'])}** "
+            f"in **{self.setup_view.selected_timezone}**.{full_day_note}",
+            ephemeral=True
+        )
+
+        self.setup_view.stop()
+
+
+class SilentAddView(discord.ui.View):
+    def __init__(self, user_id: int, current_timezone: str):
+        super().__init__(timeout=300)
+        self.user_id = user_id
+        self.selected_days: List[int] = []
+        self.selected_timezone: str | None = (
+            current_timezone
+            if any(value == current_timezone for _, value in TIMEZONE_OPTIONS)
+            else None
+        )
+        self.add_item(SilentDaysSelect())
+        self.add_item(SilentTimezoneSelect(current_timezone))
+
+    async def check_user(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id == self.user_id:
+            return True
+
+        await interaction.response.send_message(
+            "Only the person who opened this menu can use it.",
+            ephemeral=True
+        )
+        return False
+
+    @discord.ui.button(label="Enter times", style=discord.ButtonStyle.primary, row=2)
+    async def enter_times(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not await self.check_user(interaction):
+            return
+
+        if not self.selected_days:
+            await interaction.response.send_message(
+                "Select at least one day first.",
+                ephemeral=True
+            )
+            return
+
+        if self.selected_timezone is None:
+            await interaction.response.send_message(
+                "Select a time zone first.",
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.send_modal(SilentTimeModal(self))
+
+
+class RemoveSilentSelect(discord.ui.Select):
+    def __init__(self, schedules: List[dict], timezone: str, row: int):
+        options = []
+        for schedule in schedules:
+            full_day = " · all day" if schedule["start"] == schedule["end"] else ""
+            options.append(
+                discord.SelectOption(
+                    label=f"{format_days(schedule['days'])}: {format_time(schedule['start'])}–{format_time(schedule['end'])}",
+                    value=schedule["id"],
+                    description=f"{timezone}{full_day} · ID: {schedule['id']}"
+                )
+            )
+
+        super().__init__(
+            placeholder="Select silent hours to remove",
+            min_values=1,
+            max_values=len(options),
+            options=options,
+            row=row
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        view: RemoveSilentView = self.view
+        if interaction.user.id != view.user_id:
+            await interaction.response.send_message(
+                "Only the person who opened this menu can use it.",
+                ephemeral=True
+            )
+            return
+
+        user_id_str = str(interaction.user.id)
+        schedules = silent_settings.get(user_id_str, {}).get("schedules", [])
+        selected_ids = set(self.values)
+        removed = [schedule for schedule in schedules if schedule["id"] in selected_ids]
+        schedules[:] = [schedule for schedule in schedules if schedule["id"] not in selected_ids]
+        save_silent_settings()
+
+        plural = "s" if len(removed) != 1 else ""
+        await interaction.response.send_message(
+            f"Successfully removed **{len(removed)} silent-hour schedule{plural}**.",
+            ephemeral=True
+        )
+
+        for item in view.children:
+            item.disabled = True
+        await interaction.message.edit(view=view)
+        view.stop()
+
+
+class RemoveSilentView(discord.ui.View):
+    def __init__(self, user_id: int, schedules: List[dict], timezone: str):
+        super().__init__(timeout=300)
+        self.user_id = user_id
+
+        # Discord allows at most 25 options per dropdown and five rows per view.
+        for row, start_index in enumerate(range(0, min(len(schedules), 125), 25)):
+            self.add_item(RemoveSilentSelect(schedules[start_index:start_index + 25], timezone, row))
+
+
 @bot.hybrid_group(name="silent")
 async def silent(ctx: commands.Context):
     """Manage times during which you will not be notified."""
@@ -744,80 +1565,48 @@ async def silent(ctx: commands.Context):
 
 
 @silent.command(name="add")
-@app_commands.describe(
-    days="Every day, weekdays, weekends, or comma-separated days",
-    start_time="For example: 10:30 PM, 7 AM, or 22:30",
-    end_time="For example: 8:00 AM, 9 AM, or 09:00",
-    timezone="An IANA timezone such as America/Phoenix or America/New_York"
-)
-async def silent_add(
-    ctx: commands.Context,
-    days: str,
-    start_time: str,
-    end_time: str,
-    timezone: str
-):
+async def silent_add(ctx: commands.Context):
     """Add recurring silent hours."""
-    try:
-        parsed_days = parse_days(days)
-        parsed_start = parse_time(start_time)
-        parsed_end = parse_time(end_time)
-        ZoneInfo(timezone)
-    except (ValueError, ZoneInfoNotFoundError) as error:
-        await ctx.send(str(error), reference=ctx.message, ephemeral=True)
-        return
 
-    user_id_str = str(ctx.author.id)
-    if user_id_str not in silent_settings:
-        silent_settings[user_id_str] = {
-            "dnd": False,
-            "timezone": timezone,
-            "schedules": []
-        }
+    view = SilentSetupView(ctx.author.id)
 
-    silent_settings[user_id_str]["timezone"] = timezone
-    if "schedules" not in silent_settings[user_id_str]:
-        silent_settings[user_id_str]["schedules"] = []
-
-    schedule = {
-        "id": uuid.uuid4().hex[:8],
-        "days": parsed_days,
-        "start": parsed_start.strftime("%H:%M"),
-        "end": parsed_end.strftime("%H:%M")
-    }
-    silent_settings[user_id_str]["schedules"].append(schedule)
-    save_silent_settings()
-
-    full_day_note = " This covers the entire selected day." if parsed_start == parsed_end else ""
     await ctx.send(
-        f"Silent hours **{schedule['id']}** added: **{format_days(parsed_days)}**, "
-        f"**{format_time(schedule['start'])}–{format_time(schedule['end'])}** "
-        f"in **{timezone}**.{full_day_note}",
+        embed=view.make_embed(),
+        view=view,
         reference=ctx.message,
         ephemeral=True
     )
 
 
 @silent.command(name="remove")
-@app_commands.describe(schedule_id="The ID shown by /silent list")
-async def silent_remove(ctx: commands.Context, schedule_id: str):
+async def silent_remove(ctx: commands.Context):
     """Remove recurring silent hours."""
-    user_id_str = str(ctx.author.id)
-    schedules = silent_settings.get(user_id_str, {}).get("schedules", [])
 
-    for schedule in schedules:
-        if schedule["id"].lower() == schedule_id.strip().lower():
-            schedules.remove(schedule)
-            save_silent_settings()
-            await ctx.send(
-                f"Silent hours **{schedule['id']}** removed.",
-                reference=ctx.message,
-                ephemeral=True
-            )
-            return
+    user_id_str = str(ctx.author.id)
+    schedules = silent_settings.get(
+        user_id_str,
+        {}
+    ).get("schedules", [])
+
+    if len(schedules) == 0:
+        await ctx.send(
+            "You have no silent hours to remove.",
+            reference=ctx.message,
+            ephemeral=True
+        )
+        return
+
+    embed = discord.Embed(
+        title="Remove silent hours",
+        description=(
+            "Choose one or more silent-hour schedules from the "
+            "dropdown below."
+        )
+    )
 
     await ctx.send(
-        f"I could not find silent hours with the ID `{schedule_id}`. Use `/silent list` to see your IDs.",
+        embed=embed,
+        view=RemoveSilentView(schedules),
         reference=ctx.message,
         ephemeral=True
     )
