@@ -861,20 +861,8 @@ async def silent_list(ctx: commands.Context):
 
 # endregion
 
-#region Do not disturb
-
-@bot.hybrid_command(name="dnd")
-@app_commands.describe(value="Turn do not disturb on, off, or check its status")
-@app_commands.choices(value=[
-    app_commands.Choice(name="On", value="on"),
-    app_commands.Choice(name="Off", value="off"),
-    app_commands.Choice(name="Status", value="status")
-])
-async def dnd(ctx: commands.Context, value: app_commands.Choice[str]):
-    """Temporarily stop all notifications until you turn them back on."""
-    user_id_str = str(ctx.author.id)
-    selected = value.value if isinstance(value, app_commands.Choice) else str(value).lower()
-
+# region Do not disturb
+def ensure_silent_settings(user_id_str: str):
     if user_id_str not in silent_settings:
         silent_settings[user_id_str] = {
             "dnd": False,
@@ -882,19 +870,79 @@ async def dnd(ctx: commands.Context, value: app_commands.Choice[str]):
             "schedules": []
         }
 
-    if selected == "status":
-        status = "on" if silent_settings[user_id_str].get("dnd", False) else "off"
+
+@bot.hybrid_group(name="dnd", invoke_without_command=True)
+async def dnd(ctx: commands.Context):
+    """Temporarily stop all notifications until you turn them back on."""
+    await ctx.send(
+        "Use `/dnd enable`, `/dnd disable`, or `/dnd status`.",
+        reference=ctx.message,
+        ephemeral=True
+    )
+
+
+@dnd.command(name="enable")
+async def dnd_enable(ctx: commands.Context):
+    """Enable Do Not Disturb."""
+    user_id_str = str(ctx.author.id)
+    ensure_silent_settings(user_id_str)
+
+    if silent_settings[user_id_str].get("dnd", False):
         await ctx.send(
-            f"Do not disturb is currently **{status}**.",
+            "Do not disturb is already **enabled**.",
             reference=ctx.message,
             ephemeral=True
         )
         return
 
-    silent_settings[user_id_str]["dnd"] = selected == "on"
+    silent_settings[user_id_str]["dnd"] = True
     save_silent_settings()
+
     await ctx.send(
-        f"Do not disturb has been turned **{selected}**.",
+        "Do not disturb has been **enabled**.",
+        reference=ctx.message,
+        ephemeral=True
+    )
+
+
+@dnd.command(name="disable")
+async def dnd_disable(ctx: commands.Context):
+    """Disable Do Not Disturb."""
+    user_id_str = str(ctx.author.id)
+    ensure_silent_settings(user_id_str)
+
+    if not silent_settings[user_id_str].get("dnd", False):
+        await ctx.send(
+            "Do not disturb is already **disabled**.",
+            reference=ctx.message,
+            ephemeral=True
+        )
+        return
+
+    silent_settings[user_id_str]["dnd"] = False
+    save_silent_settings()
+
+    await ctx.send(
+        "Do not disturb has been **disabled**.",
+        reference=ctx.message,
+        ephemeral=True
+    )
+
+
+@dnd.command(name="status")
+async def dnd_status(ctx: commands.Context):
+    """Check whether Do Not Disturb is enabled."""
+    user_id_str = str(ctx.author.id)
+    ensure_silent_settings(user_id_str)
+
+    status = (
+        "enabled"
+        if silent_settings[user_id_str].get("dnd", False)
+        else "disabled"
+    )
+
+    await ctx.send(
+        f"Do not disturb is currently **{status}**.",
         reference=ctx.message,
         ephemeral=True
     )
