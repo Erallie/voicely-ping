@@ -807,13 +807,23 @@ class SilentDaySelect(discord.ui.Select):
             options=options
         )
 
-    async def callback(self, interaction: discord.Interaction):
-        view: SilentSetupView = self.view
-        view.selected_days = sorted(int(value) for value in self.values)
+    async def callback(
+        self,
+        interaction: discord.Interaction
+    ):
+        view = self.view
 
-        await interaction.response.send_message(
-            f"Selected days: **{format_days(view.selected_days)}**.",
-            ephemeral=True
+        if not isinstance(view, SilentSetupView):
+            return
+
+        view.selected_days = [
+            int(value)
+            for value in self.values
+        ]
+
+        await interaction.response.edit_message(
+            embed=view.make_embed(),
+            view=view
         )
 
 
