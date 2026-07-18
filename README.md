@@ -12,6 +12,8 @@
 
 Voicely Ping is a Discord bot that allows users to set up direct message notifications for when there are a certain number of people in a voice channel.
 
+If you want something similar but that pings a role instead, try [Voicely Role](https://discord.com/discovery/applications/1527731147428073493).
+
 ## Commands
 
 ### Pings
