@@ -1247,17 +1247,17 @@ async def visible(ctx: commands.Context, value: return_stripped):
 # region silent hours
 
 @bot.hybrid_group(name="silent")
-async def silent(ctx: commands.Context):
+async def silenthours(ctx: commands.Context):
     """Manage times during which you will not be notified."""
     if ctx.invoked_subcommand is None:
         await ctx.send(
-            "Use `/silent add`, `/silent remove`, or `/silent list`.",
+            "Manage times during which you will not be notified. Use `/silent add`, `/silent remove`, or `/silent list`.",
             reference=ctx.message,
             ephemeral=True
         )
 
 
-@silent.command(name="add")
+@silenthours.command(name="add")
 async def silent_add(ctx: commands.Context):
     """Add recurring silent hours."""
 
@@ -1271,7 +1271,7 @@ async def silent_add(ctx: commands.Context):
     )
 
 
-@silent.command(name="remove")
+@silenthours.command(name="remove")
 async def silent_remove(ctx: commands.Context):
     """Remove recurring silent hours."""
 
@@ -1305,7 +1305,7 @@ async def silent_remove(ctx: commands.Context):
     )
 
 
-@silent.command(name="list")
+@silenthours.command(name="list")
 async def silent_list(ctx: commands.Context):
     """List your recurring silent hours."""
     user_id_str = str(ctx.author.id)
