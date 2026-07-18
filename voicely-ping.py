@@ -1325,7 +1325,7 @@ async def silent_list(ctx: commands.Context):
     for schedule in schedules:
         full_day = " (all day)" if schedule["start"] == schedule["end"] else ""
         lines.append(
-            f"- **{schedule['id']}** — {format_days(schedule['days'])}, "
+            f"- {format_days(schedule['days'])}, "
             f"{format_time(schedule['start'])}–{format_time(schedule['end'])}{full_day}"
         )
 
