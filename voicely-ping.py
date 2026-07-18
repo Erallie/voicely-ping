@@ -599,10 +599,6 @@ class RemovePingView(discord.ui.View):
         
 # endregion
 
-# region silent hours
-# Silent-hours commands are defined below with the other bot commands.
-# endregion
-
 # region Reused errors
 def get_error(action: str, error = None):
     if error:
@@ -735,7 +731,7 @@ async def visible(ctx: commands.Context, value: return_stripped):
 
         await ctx.send(f"The visibility of command responses has been **reset** to the bot's default: `{bot.default_settings['ephemeral']}`", reference=ctx.message, ephemeral=True)
 
-
+# region silent hours
 @bot.hybrid_group(name="silent")
 async def silent(ctx: commands.Context):
     """Manage times during which you will not be notified."""
@@ -863,6 +859,9 @@ async def silent_list(ctx: commands.Context):
     )
     await ctx.send(embed=embed, reference=ctx.message, ephemeral=True)
 
+# endregion
+
+#region Do not disturb
 
 @bot.hybrid_command(name="dnd")
 @app_commands.describe(value="Turn do not disturb on, off, or check its status")
@@ -900,6 +899,7 @@ async def dnd(ctx: commands.Context, value: app_commands.Choice[str]):
         ephemeral=True
     )
 
+# endregion
 
 # endregion
 
