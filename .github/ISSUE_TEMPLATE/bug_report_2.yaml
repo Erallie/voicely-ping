@@ -5,7 +5,6 @@ labels: ["bug"]
 projects: []
 assignees:
   - Erallie
-type: bug
 body:
   - type: checkboxes
     id: prerequisites
