@@ -1227,6 +1227,11 @@ async def add(ctx: commands.Context):
 @ping.command()
 async def remove(ctx: commands.Context):
     """Remove a ping that you previously set up."""
+    # Slash-command interactions must be acknowledged within three seconds.
+    # Building this menu can take longer for users with many saved pings, so
+    # defer immediately and send the completed menu as a follow-up.
+    await ctx.defer(ephemeral=True)
+
     # guild_id = str(ctx.guild.id)
     user_id_str = str(ctx.author.id)
     # Remove the user from the notification set for the guild, if they exist
@@ -1242,14 +1247,14 @@ async def remove(ctx: commands.Context):
 
                     options.append({
                         "guild_str": guild_id_str,
-                        "guild_name": guild.name,
+                        "guild_name": guild.name if guild is not None else "Unknown server",
                         "channel_str": channel_id_str,
-                        "channel_name": channel.name,
+                        "channel_name": channel.name if channel is not None else "Unknown channel",
                         "count_str": count_str
                     })
     
     if len(options) == 0:
-        await ctx.send(f'You have not set up any pings to remove.', reference=ctx.message, ephemeral=True)
+        await ctx.send('You have not set up any pings to remove.', ephemeral=True)
     else:
         def sort_options(option):
             guild_name: str = option["guild_name"]
@@ -1266,7 +1271,7 @@ async def remove(ctx: commands.Context):
         # embed = discord.Embed(title="Remove pings", description=f"Choose from the dropdowns below to remove those pings.")
         # view = RemovePingView(options, 0)
         
-        await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), reference=ctx.message, ephemeral=True)
+        await ctx.send(embed=remove_ping_embed(0, get_select_pages(options)), view=RemovePingView(options, 0), ephemeral=True)
 
 @bot.hybrid_command()
 @app_commands.describe(value="Type 'true' to make responses visible, 'false' to make them invisible, or 'reset' to set to default.")
